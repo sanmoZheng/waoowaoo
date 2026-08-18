@@ -2,11 +2,14 @@ name: Build & Push Docker Image
 
 on:
   push:
-    branches:
-      - v1.0
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image version (for example: 1.0.1)'
+        required: true
+        type: string
 
 env:
   REGISTRY: ${{ vars.REGISTRY }}
@@ -43,6 +46,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/v1.0' }}
             type=semver,pattern={{version}}
+            type=raw,value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
             type=sha,prefix=
 
       - name: Build and push
