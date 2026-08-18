@@ -28,3 +28,6 @@ Execution rules:
 6. Repaint the background according to shot type and angle.
 7. If storyboard conflicts with source text, keep narrative logic from source text.
 8. Keep final visual style consistent with provided references.
+9. `context.location_reference` is a hard asset constraint. Preserve architecture, spatial topology, path direction, ground material, period details, and landmarks while adapting only camera angle and framing.
+10. Every item in `context.prop_references` is a hard prop constraint. Preserve object identity, form, material, color, period, and identifying details; never replace or modernize it.
+11. Combine each reference image with its `selected_asset_description` and `summary`. Do not let character references override scene structure, and do not omit required characters merely because the scene reference is empty.

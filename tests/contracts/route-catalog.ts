@@ -28,6 +28,7 @@ export type RouteCatalogEntry = {
 
 const ROUTE_FILES = [
   'src/app/api/admin/download-logs/route.ts',
+  'src/app/api/admin/users/route.ts',
   'src/app/api/asset-hub/ai-design-character/route.ts',
   'src/app/api/asset-hub/ai-design-location/route.ts',
   'src/app/api/asset-hub/ai-modify-character/route.ts',
@@ -93,6 +94,7 @@ const ROUTE_FILES = [
   'src/app/api/novel-promotion/[projectId]/download-videos/route.ts',
   'src/app/api/novel-promotion/[projectId]/download-voices/route.ts',
   'src/app/api/novel-promotion/[projectId]/editor/route.ts',
+  'src/app/api/novel-promotion/[projectId]/editor/render/route.ts',
   'src/app/api/novel-promotion/[projectId]/episodes/[episodeId]/route.ts',
   'src/app/api/novel-promotion/[projectId]/episodes/batch/route.ts',
   'src/app/api/novel-promotion/[projectId]/episodes/route.ts',
@@ -156,6 +158,7 @@ const ROUTE_FILES = [
   'src/app/api/tasks/route.ts',
   'src/app/api/user-preference/route.ts',
   'src/app/api/user/api-config/route.ts',
+  'src/app/api/user/api-config/comfyui-workflows/route.ts',
   'src/app/api/user/assistant/chat/route.ts',
   'src/app/api/user/api-config/assistant/validate-media-template/route.ts',
   'src/app/api/user/api-config/assistant/probe-media-template/route.ts',

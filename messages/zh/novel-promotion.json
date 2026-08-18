@@ -90,6 +90,13 @@
     "cancelConfirm": "确定要取消吗？已分析的剧集将被清空。"
   },
   "storyInput": {
+    "sourceMode": {
+      "story": "故事 / 小说",
+      "screenplay": "导入已有剧本",
+      "importButton": "解析已有剧本",
+      "storyPlaceholder": "请输入故事或小说内容。AI 将分析角色、场景和道具，并转换为结构化剧本。",
+      "screenplayPlaceholder": "请粘贴已有剧本。原文和对白将被保留，AI 只提取角色、场景、道具并切分片段，不重新改写剧本。"
+    },
     "currentEditing": "当前正在编辑：{name}",
     "editingTip": "以下制作流程仅针对本集,如有其他剧集请在左上角切换",
     "wordCount": "字数：",

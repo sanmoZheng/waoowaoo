@@ -176,7 +176,7 @@ export function useWorkspaceExecution({
     }
   }, [analyzeProjectAssetsMutation, episodeId, isAssetAnalysisRunning, onRefresh, t])
 
-  const runStoryToScriptFlow = useCallback(async () => {
+  const runStoryToScriptFlow = useCallback(async (sourceMode: 'story' | 'screenplay' = 'story') => {
     if (!episodeId) {
       alert(t('execution.selectEpisode'))
       return
@@ -192,11 +192,12 @@ export function useWorkspaceExecution({
       setIsTransitioning(true)
       setStoryToScriptConsoleMinimized(false)
 
-      await onUpdateConfig('workflowMode', 'agent')
+      await onUpdateConfig('workflowMode', sourceMode === 'screenplay' ? 'script-import' : 'agent')
       setTransitionProgress({ message: t('execution.storyToScriptRunning'), step: 'streaming' })
       const runResult = await storyToScriptStream.run({
         episodeId,
         content: storyContent,
+        sourceMode,
         model: analysisModel || undefined,
         temperature: 0.7,
         reasoning: true,

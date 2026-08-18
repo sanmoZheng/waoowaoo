@@ -9,6 +9,7 @@ const prismaMock = vi.hoisted(() => ({
   },
   locationImage: {
     update: vi.fn(),
+    updateMany: vi.fn(),
     deleteMany: vi.fn(),
   },
   $transaction: vi.fn(),
@@ -33,6 +34,7 @@ describe('project location-backed selection service', () => {
       callback: (tx: {
         locationImage: {
           update: typeof prismaMock.locationImage.update
+          updateMany: typeof prismaMock.locationImage.updateMany
           deleteMany: typeof prismaMock.locationImage.deleteMany
         }
         novelPromotionLocation: {
@@ -47,10 +49,11 @@ describe('project location-backed selection service', () => {
     deleteObjectMock.mockResolvedValue(undefined)
     prismaMock.locationImage.deleteMany.mockResolvedValue({ count: 1 })
     prismaMock.locationImage.update.mockResolvedValue(undefined)
+    prismaMock.locationImage.updateMany.mockResolvedValue({ count: 2 })
     prismaMock.novelPromotionLocation.update.mockResolvedValue(undefined)
   })
 
-  it('confirms a prop selection by keeping only the selected render', async () => {
+  it('confirms a prop selection while preserving every candidate render', async () => {
     prismaMock.novelPromotionLocation.findUnique.mockResolvedValue({
       id: 'prop-1',
       selectedImageId: 'prop-image-2',
@@ -75,20 +78,16 @@ describe('project location-backed selection service', () => {
     const result = await mod.confirmProjectLocationBackedSelection('prop-1')
 
     expect(result).toEqual({ success: true })
-    expect(resolveStorageKeyFromMediaValueMock).toHaveBeenCalledWith('https://example.com/prop-1.png')
-    expect(deleteObjectMock).toHaveBeenCalledWith('key:https://example.com/prop-1.png')
-    expect(prismaMock.locationImage.deleteMany).toHaveBeenCalledWith({
-      where: {
-        locationId: 'prop-1',
-        id: { not: 'prop-image-2' },
-      },
+    expect(resolveStorageKeyFromMediaValueMock).not.toHaveBeenCalled()
+    expect(deleteObjectMock).not.toHaveBeenCalled()
+    expect(prismaMock.locationImage.deleteMany).not.toHaveBeenCalled()
+    expect(prismaMock.locationImage.updateMany).toHaveBeenCalledWith({
+      where: { locationId: 'prop-1' },
+      data: { isSelected: false },
     })
     expect(prismaMock.locationImage.update).toHaveBeenCalledWith({
       where: { id: 'prop-image-2' },
-      data: {
-        imageIndex: 0,
-        isSelected: true,
-      },
+      data: { isSelected: true },
     })
     expect(prismaMock.novelPromotionLocation.update).toHaveBeenCalledWith({
       where: { id: 'prop-1' },

@@ -7,6 +7,8 @@ import TaskStatusOverlay from '@/components/task/TaskStatusOverlay'
 import type { TaskPresentationState } from '@/lib/task/presentation'
 import { MediaImageWithLoading } from '@/components/media/MediaImageWithLoading'
 import { AppIcon } from '@/components/ui/icons'
+import { AI_EDIT_BUTTON_CLASS, AI_EDIT_ICON_CLASS } from '@/components/ui/ai-edit-style'
+import AISparklesIcon from '@/components/ui/icons/AISparklesIcon'
 
 type CharacterCardGalleryProps =
   | {
@@ -21,6 +23,7 @@ type CharacterCardGalleryProps =
     displayTaskPresentation: TaskPresentationState | null
     onImageClick: (imageUrl: string) => void
     onSelectImage?: (characterId: string, appearanceId: string, imageIndex: number | null) => void
+    onImageEdit?: (characterId: string, appearanceId: string, imageIndex: number) => void
   }
   | {
     mode: 'single'
@@ -49,7 +52,12 @@ export default function CharacterCardGallery(props: CharacterCardGalleryProps) {
           return (
             <div key={originalIndex} className="relative group/thumb">
               <div
-                onClick={() => props.onImageClick(url)}
+                onClick={() => {
+                  if (!isThisTaskRunning) {
+                    props.onSelectImage?.(props.characterId, props.appearanceId, originalIndex)
+                  }
+                }}
+                onDoubleClick={() => props.onImageClick(url)}
                 className={`rounded-lg overflow-hidden border-2 transition-all cursor-pointer relative ${isThisSelected
                   ? 'border-[var(--glass-stroke-success)] ring-2 ring-[var(--glass-focus-ring)]'
                   : 'border-[var(--glass-stroke-base)] hover:border-[var(--glass-stroke-focus)]'
@@ -80,7 +88,7 @@ export default function CharacterCardGallery(props: CharacterCardGalleryProps) {
                   onClick={(e) => {
                     e.stopPropagation()
                     if (!isThisTaskRunning) {
-                      props.onSelectImage?.(props.characterId, props.appearanceId, isThisSelected ? null : originalIndex)
+                      props.onSelectImage?.(props.characterId, props.appearanceId, originalIndex)
                     }
                   }}
                   disabled={isThisTaskRunning}
@@ -88,10 +96,23 @@ export default function CharacterCardGallery(props: CharacterCardGalleryProps) {
                     ? 'bg-[var(--glass-tone-success-fg)] text-white'
                     : 'bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-accent-from)] hover:text-white'
                     } disabled:opacity-50`}
-                  title={isThisSelected ? t('image.cancelSelection') : t('image.useThis')}
+                  title={isThisSelected ? t('image.optionSelected', { number: originalIndex + 1 }) : t('image.useThis')}
                 >
                   <AppIcon name="check" className="w-4 h-4" />
                 </button>
+
+                {props.onImageEdit && !isThisTaskRunning && (
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      props.onImageEdit?.(props.characterId, props.appearanceId, originalIndex)
+                    }}
+                    className={`absolute top-2 left-2 h-7 w-7 rounded-full flex items-center justify-center transition-all active:scale-95 ${AI_EDIT_BUTTON_CLASS}`}
+                    title={t('image.edit')}
+                  >
+                    <AISparklesIcon className={`h-4 w-4 ${AI_EDIT_ICON_CLASS}`} />
+                  </button>
+                )}
               </div>
             </div>
           )

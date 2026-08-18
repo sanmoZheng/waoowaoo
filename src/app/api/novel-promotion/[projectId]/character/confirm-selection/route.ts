@@ -1,20 +1,18 @@
-import { logInfo as _ulogInfo, logWarn as _ulogWarn } from '@/lib/logging/core'
+import { logInfo as _ulogInfo } from '@/lib/logging/core'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { deleteObject } from '@/lib/storage'
-import { decodeImageUrlsFromDb, encodeImageUrls } from '@/lib/contracts/image-urls-contract'
-import { resolveStorageKeyFromMediaValue } from '@/lib/media/service'
+import { decodeImageUrlsFromDb } from '@/lib/contracts/image-urls-contract'
 import { requireProjectAuthLight, isErrorResponse } from '@/lib/api-auth'
 import { apiHandler, ApiError } from '@/lib/api-errors'
 
 /**
- * POST - 确认选择并删除未选中的候选图片
+ * POST - 确认当前选择，并保留全部候选图片供后续切换
  * Body: { characterId, appearanceId }
  * 
  * 工作流程：
  * 1. 验证已经选择了一张图片（selectedIndex 不为 null）
- * 2. 删除 imageUrls 中未选中的图片（从 COS 和数据库）
- * 3. 将选中的图片设为唯一图片
+ * 2. 将当前选中图片同步为主图
+ * 3. 保留 imageUrls 中的全部候选图片
  */
 export const POST = apiHandler(async (
   request: NextRequest,
@@ -51,15 +49,6 @@ export const POST = apiHandler(async (
   // 解析图片数组
   const imageUrls = decodeImageUrlsFromDb(appearance.imageUrls, 'characterAppearance.imageUrls')
 
-  if (imageUrls.length <= 1) {
-    // 已经只有一张图片，无需操作
-    return NextResponse.json({
-      success: true,
-      message: '已确认选择',
-      deletedCount: 0
-    })
-  }
-
   const selectedIndex = appearance.selectedIndex
   const selectedImageUrl = imageUrls[selectedIndex]
 
@@ -67,49 +56,20 @@ export const POST = apiHandler(async (
     throw new ApiError('NOT_FOUND')
   }
 
-  // 删除未选中的图片
-  const deletedImages: string[] = []
-  for (let i = 0; i < imageUrls.length; i++) {
-    if (i !== selectedIndex && imageUrls[i]) {
-      const key = await resolveStorageKeyFromMediaValue(imageUrls[i]!)
-      if (key) {
-        try {
-          await deleteObject(key)
-          deletedImages.push(key)
-        } catch {
-          _ulogWarn('Failed to delete COS image:', key)
-        }
-      }
-    }
-  }
-
-  // 同样处理 descriptions，只保留选中的描述
-  let descriptions: string[] = []
-  if (appearance.descriptions) {
-    try {
-      descriptions = JSON.parse(appearance.descriptions)
-    } catch { }
-  }
-  const selectedDescription = descriptions[selectedIndex] || appearance.description || ''
-
-  // 更新数据库：只保留选中的图片
+  // 只同步主图；候选图片、索引和描述数组全部保留，允许之后再次切换。
   await prisma.characterAppearance.update({
     where: { id: appearance.id },
     data: {
       imageUrl: selectedImageUrl,
-      imageUrls: encodeImageUrls([selectedImageUrl]),  // 只保留选中的图片
-      selectedIndex: 0,  // 现在只有一张，索引为0
-      description: selectedDescription,
-      descriptions: JSON.stringify([selectedDescription])
+      selectedIndex,
     }
   })
 
   _ulogInfo(`✓ 确认选择: ${appearance.character.name} - ${appearance.changeReason}`)
-  _ulogInfo(`✓ 删除了 ${deletedImages.length} 张未选中的图片`)
 
   return NextResponse.json({
     success: true,
-    message: '已确认选择，其他候选图片已删除',
-    deletedCount: deletedImages.length
+    message: '已确认选择，其他候选图片已保留',
+    deletedCount: 0
   })
 })

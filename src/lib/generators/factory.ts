@@ -18,6 +18,7 @@ import {
 } from './image'
 import { GoogleVeoVideoGenerator } from './video/google'
 import { OpenAICompatibleVideoGenerator } from './video'
+import { ComfyUIVideoGenerator } from './video/comfyui'
 import { MinimaxVideoGenerator } from './minimax'
 import { ViduVideoGenerator } from './vidu'
 import { getProviderKey } from '@/lib/api-config'
@@ -96,6 +97,8 @@ export function createVideoGenerator(provider: string): VideoGenerator {
             return new BailianVideoGenerator()
         case 'siliconflow':
             return new SiliconFlowVideoGenerator()
+        case 'comfyui':
+            return new ComfyUIVideoGenerator()
         default:
             throw new Error(`Unknown video generator provider: ${provider}`)
     }

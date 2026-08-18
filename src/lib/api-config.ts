@@ -419,14 +419,15 @@ export async function getProviderConfig(userId: string, providerId: string): Pro
   const { providers } = await readUserConfig(userId)
   const provider = pickProviderStrict(providers, providerId)
 
-  if (!provider.apiKey) {
+  const providerKey = getProviderKey(provider.id).toLowerCase()
+  if (!provider.apiKey && providerKey !== 'comfyui') {
     throw new Error(`PROVIDER_API_KEY_MISSING: ${provider.id}`)
   }
 
   return {
     id: provider.id,
     name: provider.name,
-    apiKey: decryptApiKey(provider.apiKey),
+    apiKey: provider.apiKey ? decryptApiKey(provider.apiKey) : '',
     baseUrl: normalizeProviderBaseUrl(provider.id, provider.baseUrl),
     apiMode: provider.apiMode,
     gatewayRoute: provider.gatewayRoute,

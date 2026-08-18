@@ -15,7 +15,7 @@ import { ART_STYLES, VIDEO_RATIOS } from '@/lib/constants'
 import { DEFAULT_STYLE_PRESET_VALUE, STYLE_PRESETS } from '@/lib/style-presets'
 import { Link, useRouter } from '@/i18n/navigation'
 import { apiFetch } from '@/lib/api-fetch'
-import { expandHomeStory } from '@/lib/home/ai-story-expand'
+import { expandHomeStory, shouldAutoExpandHomeStory } from '@/lib/home/ai-story-expand'
 import { createHomeProjectLaunch } from '@/lib/home/create-project-launch'
 import { formatDefaultProjectTimestamp } from '@/lib/projects/default-name'
 import { HOME_QUICK_START_MIN_ROWS } from '@/lib/ui/textarea-height'
@@ -97,7 +97,10 @@ export default function HomePage() {
     setCreateError(null)
     setCreateLoading(true)
     try {
-      const storyText = inputValue.trim()
+      const originalInput = inputValue.trim()
+      const storyText = shouldAutoExpandHomeStory(originalInput)
+        ? (await expandHomeStory({ apiFetch, prompt: originalInput })).expandedText
+        : originalInput
       const result = await createHomeProjectLaunch({
         apiFetch,
         projectName: t('defaultProjectName', {

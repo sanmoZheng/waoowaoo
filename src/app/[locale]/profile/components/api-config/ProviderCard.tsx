@@ -54,6 +54,7 @@ export function ProviderCard({
       <ProviderBaseFields provider={provider} t={t} state={state} />
       <ProviderAdvancedFields
         provider={provider}
+        onAddModel={onAddModel}
         onToggleModel={onToggleModel}
         onDeleteModel={onDeleteModel}
         onUpdateModel={onUpdateModel}

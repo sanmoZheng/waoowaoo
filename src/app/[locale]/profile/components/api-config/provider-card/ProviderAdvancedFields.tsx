@@ -13,6 +13,7 @@ import type {
 
 interface ProviderAdvancedFieldsProps {
   provider: ProviderCardProps['provider']
+  onAddModel: ProviderCardProps['onAddModel']
   onToggleModel: ProviderCardProps['onToggleModel']
   onDeleteModel: ProviderCardProps['onDeleteModel']
   onUpdateModel: ProviderCardProps['onUpdateModel']
@@ -127,6 +128,7 @@ function getModelPriceTexts(model: CustomModel, t: ProviderCardTranslator): stri
 
 export function ProviderAdvancedFields({
   provider,
+  onAddModel,
   onToggleModel,
   onDeleteModel,
   onUpdateModel,
@@ -166,6 +168,13 @@ export function ProviderAdvancedFields({
 
   return useTabbedLayout ? (
     <div className="space-y-2.5 p-3">
+      {providerKey === 'comfyui' && (
+        <ComfyUIWorkflowPicker
+          baseUrl={provider.baseUrl || ''}
+          existingModelIds={new Set((state.groupedModels.video || []).map((model) => model.modelId))}
+          onAddModel={onAddModel}
+        />
+      )}
       <SegmentedControl
         options={visibleTypes.map((type) => ({
           value: type,
@@ -274,7 +283,7 @@ export function ProviderAdvancedFields({
                 onToggleModel={onToggleModel}
                 onDeleteModel={onDeleteModel}
                 onUpdateModel={onUpdateModel}
-                hasApiKey={!!provider.hasApiKey}
+                hasApiKey={providerKey === 'comfyui' ? !!provider.baseUrl : !!provider.hasApiKey}
               />
             ))}
           </div>
@@ -338,6 +347,90 @@ export function ProviderAdvancedFields({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function ComfyUIWorkflowPicker({
+  baseUrl,
+  existingModelIds,
+  onAddModel,
+}: {
+  baseUrl: string
+  existingModelIds: Set<string>
+  onAddModel: ProviderCardProps['onAddModel']
+}) {
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [workflows, setWorkflows] = useState<Array<{ name: string; path: string; modelId: string; compatible: boolean; reason: string | null }>>([])
+  const [selected, setSelected] = useState('')
+
+  const discover = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const response = await fetch('/api/user/api-config/comfyui-workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ baseUrl }),
+      })
+      const data = await response.json() as {
+        success?: boolean
+        message?: string
+        version?: string | null
+        workflows?: Array<{ name: string; path: string; modelId: string; compatible: boolean; reason: string | null }>
+      }
+      if (!response.ok || !data.success) throw new Error(data.message || '读取工作流失败')
+      const items = data.workflows || []
+      setWorkflows(items)
+      setSelected(items.find((item) => item.compatible && !existingModelIds.has(item.modelId))?.modelId || '')
+      setMessage(`ComfyUI ${data.version || ''}，发现 ${items.length} 个工作流，其中 ${items.filter((item) => item.compatible).length} 个适用于首帧生视频`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '读取工作流失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const addSelected = () => {
+    const workflow = workflows.find((item) => item.modelId === selected)
+    if (!workflow || !workflow.compatible || existingModelIds.has(workflow.modelId)) return
+    onAddModel({
+      provider: 'comfyui',
+      modelId: workflow.modelId,
+      modelKey: `comfyui::${workflow.modelId}`,
+      name: workflow.name,
+      type: 'video',
+      price: 0,
+    })
+  }
+
+  return (
+    <div className="glass-surface-soft space-y-2 rounded-xl p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-xs font-semibold text-[var(--glass-text-primary)]">ComfyUI 工作流</div>
+          <div className="text-[11px] text-[var(--glass-text-tertiary)]">从当前地址读取已保存的 workflows</div>
+        </div>
+        <button type="button" onClick={discover} disabled={loading || !baseUrl} className="glass-btn-base glass-btn-soft px-2.5 py-1.5 text-xs disabled:opacity-50">
+          {loading ? '读取中…' : '读取工作流'}
+        </button>
+      </div>
+      {workflows.length > 0 && (
+        <div className="flex gap-2">
+          <select value={selected} onChange={(event) => setSelected(event.target.value)} className="glass-input-base min-w-0 flex-1 px-3 py-1.5 text-xs">
+            {workflows.map((workflow) => (
+              <option key={workflow.modelId} value={workflow.modelId} disabled={!workflow.compatible}>
+                {workflow.name}{!workflow.compatible ? `（不兼容：${workflow.reason || '非图生视频'}）` : existingModelIds.has(workflow.modelId) ? '（已添加）' : ''}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={addSelected} disabled={!selected || existingModelIds.has(selected)} className="glass-btn-base glass-btn-primary px-3 py-1.5 text-xs disabled:opacity-50">
+            添加为视频模型
+          </button>
+        </div>
+      )}
+      {message && <div className="text-[11px] text-[var(--glass-text-secondary)]">{message}</div>}
     </div>
   )
 }

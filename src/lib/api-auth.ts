@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server'
 import { headers as readHeaders } from 'next/headers'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { isSuperAdminUsername } from '@/lib/admin-identity'
 import { withPrismaRetry } from '@/lib/prisma-retry'
 import { extractModelKey } from '@/lib/config-service'
 import { getErrorSpec, type UnifiedErrorCode } from '@/lib/errors/codes'
@@ -310,6 +311,17 @@ export async function requireUserAuth(): Promise<{ session: AuthSession } | Next
     }
     bindAuthLogContext(session)
     return { session }
+}
+
+export function isAdminSession(session: AuthSession): boolean {
+    return isSuperAdminUsername(session.user.name)
+}
+
+export async function requireAdminAuth(): Promise<{ session: AuthSession } | NextResponse> {
+    const result = await requireUserAuth()
+    if (result instanceof NextResponse) return result
+    if (!isAdminSession(result.session)) return forbidden('Administrator access required')
+    return result
 }
 
 /**

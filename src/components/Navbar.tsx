@@ -21,6 +21,7 @@ export default function Navbar() {
   const [checkMsgFading, setCheckMsgFading] = useState(false)
   const [manualChecking, setManualChecking] = useState(false)
   const downloadLogsHref = '/api/admin/download-logs'
+  const isAdmin = Boolean((session?.user as { isAdmin?: boolean } | undefined)?.isAdmin)
 
   const handleCheckUpdate = async () => {
     setCheckMsg(null)
@@ -126,6 +127,15 @@ export default function Navbar() {
                     {t('profile')}
                   </Link>
                   <LanguageSwitcher />
+                  {isAdmin && (
+                    <Link
+                      href={{ pathname: '/admin/users' } as never}
+                      className="flex items-center gap-1 text-sm font-medium text-[var(--glass-text-secondary)] transition-colors hover:text-[var(--glass-text-primary)]"
+                    >
+                      账号管理
+                    </Link>
+                  )}
+                  {isAdmin && (
                   <a
                     href={downloadLogsHref}
                     download
@@ -135,6 +145,7 @@ export default function Navbar() {
                     <AppIcon name="download" className="w-4 h-4" />
                     {t('downloadLogs')}
                   </a>
+                  )}
                 </>
 
               ) : (

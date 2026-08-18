@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl'
  * 布局：上面名字+描述，下面三张图片（每张图片有独立的编辑和重新生成按钮）
  */
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Character, CharacterAppearance } from '@/types/project'
 import { shouldShowError } from '@/lib/error-utils'
 import VoiceSettings from './VoiceSettings'
@@ -43,7 +43,7 @@ interface CharacterCardProps {
   isPrimaryAppearance?: boolean
   primaryAppearanceSelected?: boolean
   projectId: string
-  onConfirmSelection?: (characterId: string, appearanceId: string) => void  // 确认选择
+  onConfirmSelection?: (characterId: string, appearanceId: string) => Promise<void> | void  // 确认选择
   // 音色相关
   onVoiceChange?: (characterId: string, customVoiceUrl?: string) => void
   onVoiceDesign?: (characterId: string, characterName: string) => void  // AI 声音设计
@@ -144,6 +144,9 @@ export default function CharacterCard({
 
   const hasMultipleImages = imageUrlsWithIndex.length > 1
   const selectedIndex = appearance.selectedIndex ?? null
+  const [draftSelectedIndex, setDraftSelectedIndex] = useState<number | null>(selectedIndex)
+  useEffect(() => setDraftSelectedIndex(selectedIndex), [selectedIndex])
+  const effectiveSelectedIndex = draftSelectedIndex
 
   // 🔥 统一图片URL优先级：imageUrl > imageUrls[selectedIndex] > imageUrls[0]
   // 这样确保编辑后的新图片能正确显示
@@ -287,7 +290,7 @@ export default function CharacterCard({
           characterName={character.name}
           changeReason={appearance.changeReason}
           isPrimaryAppearance={isPrimaryAppearance}
-          selectedIndex={selectedIndex}
+          selectedIndex={effectiveSelectedIndex}
           actions={selectionActions}
         />
 
@@ -297,22 +300,31 @@ export default function CharacterCard({
           appearanceId={appearance.id}
           characterName={character.name}
           imageUrlsWithIndex={imageUrlsWithIndex}
-          selectedIndex={selectedIndex}
+          selectedIndex={effectiveSelectedIndex}
           isGroupTaskRunning={isGroupTaskRunning}
           isImageTaskRunning={isImageTaskRunning}
           displayTaskPresentation={displayTaskPresentation}
           onImageClick={onImageClick}
-          onSelectImage={onSelectImage}
+          onImageEdit={onImageEdit
+            ? (_characterId, _appearanceId, imageIndex) => onImageEdit(character.id, appearance.id, imageIndex)
+            : undefined}
+          onSelectImage={(characterId, appearanceId, imageIndex) => {
+            if (imageIndex === null) return
+            setDraftSelectedIndex(imageIndex)
+            onSelectImage?.(characterId, appearanceId, imageIndex)
+          }}
         />
 
         <CharacterCardActions
           mode="selection"
-          selectedIndex={selectedIndex}
+          selectedIndex={effectiveSelectedIndex}
           isConfirmingSelection={isConfirmingSelection}
           confirmSelectionState={confirmSelectionState}
           onConfirmSelection={() => {
             setIsConfirmingSelection(true)
-            onConfirmSelection?.(character.id, appearance.id)
+            void Promise.resolve(onConfirmSelection?.(character.id, appearance.id)).finally(() => {
+              setIsConfirmingSelection(false)
+            })
           }}
           isPrimaryAppearance={isPrimaryAppearance}
           voiceSettings={selectionVoiceSettings}

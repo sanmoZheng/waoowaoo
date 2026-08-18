@@ -86,10 +86,10 @@ describe('Navbar download logs entry', () => {
     useSessionMock.mockReset()
   })
 
-  it('renders the download logs entry on the far-right action group for signed-in users', () => {
+  it('renders the download logs entry for the super administrator', () => {
     Reflect.set(globalThis, 'React', React)
     useSessionMock.mockReturnValue({
-      data: { user: { name: 'Earth' } },
+      data: { user: { name: 'waoowaoo_admin', isAdmin: true } },
       status: 'authenticated',
     })
 
@@ -99,6 +99,19 @@ describe('Navbar download logs entry', () => {
     expect(html).toContain('href="/home"')
     expect(html).toContain('href="/api/admin/download-logs"')
     expect(html).toContain('download=""')
+  })
+
+  it('does not render the download logs entry for regular signed-in users', () => {
+    Reflect.set(globalThis, 'React', React)
+    useSessionMock.mockReturnValue({
+      data: { user: { name: 'Earth', isAdmin: false } },
+      status: 'authenticated',
+    })
+
+    const html = renderWithIntl(createElement(Navbar))
+
+    expect(html).not.toContain('下载日志')
+    expect(html).not.toContain('/api/admin/download-logs')
   })
 
   it('does not render the download logs entry for signed-out users', () => {

@@ -134,7 +134,7 @@ export interface AssetLibraryLocation {
 // ============================================
 
 // 工作流模式
-export type WorkflowMode = 'srt' | 'agent'
+export type WorkflowMode = 'srt' | 'agent' | 'script-import'
 
 // Clip类型（兼容SRT和Agent两种模式）
 export interface NovelPromotionClip {

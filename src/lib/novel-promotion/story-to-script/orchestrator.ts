@@ -59,6 +59,7 @@ export type StoryToScriptPromptTemplates = {
 export type StoryToScriptOrchestratorInput = {
   concurrency?: number
   content: string
+  skipScreenplayConversion?: boolean
   baseCharacters: string[]
   baseLocations: string[]
   baseProps?: string[]
@@ -247,6 +248,7 @@ export async function runStoryToScriptOrchestrator(
   const {
     concurrency: rawConcurrency,
     content,
+    skipScreenplayConversion = false,
     baseCharacters,
     baseLocations,
     baseProps = [],
@@ -507,9 +509,13 @@ export async function runStoryToScriptOrchestrator(
     throw lastBoundaryError || new Error('split_clips boundary matching failed')
   }
 
-  onLog?.('开始步骤3：对每个片段做剧本转换（并行）', { clipCount: clipList.length })
+  if (skipScreenplayConversion) {
+    onLog?.('已有剧本导入：保留原文，跳过剧本转换', { clipCount: clipList.length })
+  } else {
+    onLog?.('开始步骤3：对每个片段做剧本转换（并行）', { clipCount: clipList.length })
+  }
 
-  const screenplayResults = await mapWithConcurrency(
+  const screenplayResults = skipScreenplayConversion ? [] : await mapWithConcurrency(
     clipList,
     concurrency,
     async (clip, index): Promise<StoryToScriptScreenplayResult> => {

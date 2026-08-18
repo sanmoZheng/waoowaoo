@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { logAuthAction } from './logging/semantic'
 import { prisma } from './prisma'
+import { isSuperAdminUsername } from './admin-identity'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const authOptions: any = {
@@ -71,6 +72,7 @@ export const authOptions: any = {
     async session({ session, token }: any) {
       if (token && session.user) {
         session.user.id = token.id as string
+        session.user.isAdmin = isSuperAdminUsername(token.name)
       }
       return session
     }

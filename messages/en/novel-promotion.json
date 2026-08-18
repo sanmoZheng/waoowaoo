@@ -90,6 +90,13 @@
     "cancelConfirm": "Are you sure you want to cancel? Analyzed episodes will be cleared."
   },
   "storyInput": {
+    "sourceMode": {
+      "story": "Story / Novel",
+      "screenplay": "Import Existing Script",
+      "importButton": "Parse Existing Script",
+      "storyPlaceholder": "Enter a story or novel. AI will analyze assets and convert it into a structured screenplay.",
+      "screenplayPlaceholder": "Paste an existing script. Original text and dialogue are preserved; AI only extracts assets and splits it into clips."
+    },
     "currentEditing": "Currently editing: {name}",
     "editingTip": "The following workflow is for this episode only. Switch episodes in the top left if needed",
     "wordCount": "Word count:",

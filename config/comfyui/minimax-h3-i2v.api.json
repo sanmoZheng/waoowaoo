@@ -1,0 +1,237 @@
+{
+  "92": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "10091",
+        0
+      ],
+      "filename_prefix": "video/MiniMax_H3",
+      "format": "auto",
+      "codec": "auto"
+    }
+  },
+  "114": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "1740030512989.jpg",
+      "upload": "image"
+    }
+  },
+  "115": {
+    "class_type": "ResolutionSelector",
+    "inputs": {
+      "aspect_ratio": "9:16 (Portrait Widescreen)",
+      "megapixels": 0.7,
+      "multiple": 32
+    }
+  },
+  "116": {
+    "class_type": "MarkdownNote",
+    "inputs": {}
+  },
+  "117": {
+    "class_type": "MarkdownNote",
+    "inputs": {}
+  },
+  "118": {
+    "class_type": "MarkdownNote",
+    "inputs": {}
+  },
+  "119": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": null,
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 32
+    }
+  },
+  "120": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "119",
+        0
+      ]
+    }
+  },
+  "10011": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    }
+  },
+  "10024": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    }
+  },
+  "10023": {
+    "class_type": "VAEDecodeAudio",
+    "inputs": {
+      "samples": [
+        "10014",
+        0
+      ],
+      "vae": [
+        "10024",
+        0
+      ]
+    }
+  },
+  "10010": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "10014",
+        0
+      ],
+      "vae": [
+        "10011",
+        0
+      ]
+    }
+  },
+  "10017": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "res_multistep"
+    }
+  },
+  "10009": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": [
+        "10006",
+        0
+      ],
+      "scheduler": "simple",
+      "steps": 20,
+      "denoise": 1
+    }
+  },
+  "10014": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "10015",
+        0
+      ],
+      "guider": [
+        "10016",
+        0
+      ],
+      "sampler": [
+        "10017",
+        0
+      ],
+      "sigmas": [
+        "10009",
+        0
+      ],
+      "latent_image": [
+        "10104",
+        1
+      ]
+    }
+  },
+  "10016": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "10006",
+        0
+      ],
+      "conditioning": [
+        "10104",
+        0
+      ]
+    }
+  },
+  "10006": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "10013": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "10015": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 561735278180201
+    }
+  },
+  "10091": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "10010",
+        0
+      ],
+      "audio": [
+        "10023",
+        0
+      ],
+      "fps": 24,
+      "bit_depth": 8
+    }
+  },
+  "10104": {
+    "class_type": "MiniMaxH3ImageToVideo",
+    "inputs": {
+      "clip": [
+        "10013",
+        0
+      ],
+      "vae": [
+        "10011",
+        0
+      ],
+      "first_frame": [
+        "114",
+        0
+      ],
+      "last_frame": null,
+      "prompt": "Stylized 3D game cinematic animation, game trailer aesthetic, real-time rendering, sharp textures, soft ambient lighting, smooth character animation, clean depth of field, subtle film grain, dynamic motion blur, stable character model consistency, fluid combat movement.\nScene overview: DOTA2 hero Juggernaut with his signature white tribal mask and katana. Juggernaut swings his blade, then dimensional distortion tears open a portal; he crosses into the classic Super Mario platformer game world. Followed by a continuous platform adventure sequence, Juggernaut navigates Mario-style terrain, overcoming obstacles in this unfamiliar pixel-fantasy hybrid realm. Epic crossover action sequence, seamless world transition, dynamic and immersive.\nStoryboard (each shot a separate scene, smooth flowing sequence):\n[0s-1.8s] Shot 1: medium full shot, static camera: Juggernaut stands ready, forcefully swings his katana in a wide sweeping slash, muscles tensed, motion blur trailing the blade.\n[1.8s-3.5s] Shot 2: orbiting camera, slow circular rotation around Juggernaut. Spatial rift glows open behind him, dimensional portal flickering with colourful light distortion.\n[3.5s-5.5s] Shot 3: tracking shot: Juggernaut steps forward through the portal, environment shifts instantly, background transforms into bright colourful Super Mario game landscape with green pipes, block platforms and rolling hills.\n[5.5s-End] Shot 4: follow camera: Juggernaut explores the Mario world, strides across brick platforms, dodges classic Mario obstacles, continuous platform 闯关 movement, hybrid 3D + retro game environment.\nCamera: smooth circular orbit, natural follow tracking, moderate motion blur, gentle camera shake during sword swing, seamless environmental transition shot, no harsh random cuts.\nAudio: heavy sword swing woosh, low rumble as portal opens, magical dimensional hum, transition into upbeat classic Super Mario background music, footsteps on brick platforms.\nNo text, subtitles, logos or watermarks of any kind, avoid character model deformation, maintain Juggernaut original outfit and mask design consistently, do not alter hero appearance.",
+      "width": [
+        "115",
+        0
+      ],
+      "height": [
+        "115",
+        1
+      ],
+      "length": [
+        "10107",
+        1
+      ]
+    }
+  },
+  "10107": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "values.a": [
+        "10111",
+        0
+      ],
+      "values.b": null,
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17"
+    }
+  },
+  "10111": {
+    "class_type": "PrimitiveFloat",
+    "inputs": {
+      "value": 5
+    }
+  }
+}

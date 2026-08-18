@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { expandHomeStory } from '@/lib/home/ai-story-expand'
+import { expandHomeStory, shouldAutoExpandHomeStory } from '@/lib/home/ai-story-expand'
 
 vi.mock('@/lib/task/client', () => ({
   resolveTaskResponse: vi.fn(),
@@ -46,5 +46,25 @@ describe('expandHomeStory', () => {
       apiFetch,
       prompt: '宫廷复仇女主回京',
     })).rejects.toThrow('AI story expand response missing expandedText')
+  })
+})
+
+describe('shouldAutoExpandHomeStory', () => {
+  it('expands a short theme entered in the one-click composer', () => {
+    expect(shouldAutoExpandHomeStory('重生1990')).toBe(true)
+  })
+
+  it('expands a compact outline that is not yet a screenplay', () => {
+    expect(shouldAutoExpandHomeStory('重生商战，男主回到1990年，挽救家庭并创办科技公司。第一幕返乡，第二幕创业。')).toBe(true)
+  })
+
+  it('keeps a complete long-form story unchanged', () => {
+    const story = Array.from(
+      { length: 12 },
+      (_, index) => `第${index + 1}场，林川走进厂房，与工人讨论订单和设备改造。`,
+    ).join('\n')
+
+    expect(story.length).toBeGreaterThanOrEqual(200)
+    expect(shouldAutoExpandHomeStory(story)).toBe(false)
   })
 })

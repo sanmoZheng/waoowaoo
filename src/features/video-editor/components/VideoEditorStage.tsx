@@ -75,7 +75,15 @@ export function VideoEditorStage({
 
     const handleExport = async () => {
         try {
-            await startRender(project.id)
+            const result = await startRender(project.id)
+            if (result.outputUrl) {
+                const link = document.createElement('a')
+                link.href = result.outputUrl
+                link.download = `waoo-${episodeId}.mp4`
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+            }
             alert(t('editor.alert.exportStarted'))
         } catch (error) {
             _ulogError('Export failed:', error)

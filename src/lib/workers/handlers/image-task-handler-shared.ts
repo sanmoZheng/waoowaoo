@@ -27,6 +27,7 @@ interface CharacterLike {
 }
 
 interface LocationImageLike {
+  id?: string
   description?: string | null
   availableSlots?: string | null
   imageIndex?: number
@@ -36,6 +37,9 @@ interface LocationImageLike {
 
 interface LocationLike {
   name: string
+  summary?: string | null
+  assetKind?: string | null
+  selectedImageId?: string | null
   images?: LocationImageLike[]
 }
 
@@ -49,6 +53,37 @@ interface PanelLike {
   sketchImageUrl?: string | null
   characters?: string | null
   location?: string | null
+  props?: string | null
+}
+
+export function parsePanelAssetNames(value: string | null | undefined): string[] {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .map((item: unknown) => {
+        if (typeof item === 'string') return item.trim()
+        if (!item || typeof item !== 'object') return ''
+        const candidate = item as { name?: unknown }
+        return typeof candidate.name === 'string' ? candidate.name.trim() : ''
+      })
+      .filter(Boolean)
+  } catch {
+    return value.split(/[，,、]/).map((item) => item.trim()).filter(Boolean)
+  }
+}
+
+export function findAssetByName<T extends { name: string }>(assets: T[], referenceName: string): T | undefined {
+  const expected = referenceName.toLowerCase().trim()
+  return assets.find((asset) => asset.name.toLowerCase().trim() === expected)
+}
+
+export function pickSelectedLocationImage(location: LocationLike): LocationImageLike | undefined {
+  const images = location.images || []
+  return (location.selectedImageId
+    ? images.find((image) => image.id === location.selectedImageId)
+    : undefined) || images.find((image) => image.isSelected) || images[0]
 }
 
 export interface PanelCharacterReference {
@@ -251,14 +286,27 @@ export async function collectPanelReferenceImages(projectData: NovelProjectData,
   }
 
   if (panel.location) {
-    const location = (projectData.locations || []).find((loc) => loc.name.toLowerCase() === panel.location!.toLowerCase())
+    const location = findAssetByName(
+      (projectData.locations || []).filter((asset) => asset.assetKind !== 'prop'),
+      panel.location,
+    )
     if (location) {
-      const images = location.images || []
-      const selected = images.find((img) => img.isSelected) || images[0]
+      const selected = pickSelectedLocationImage(location)
       const signed = toSignedUrlIfCos(selected?.imageUrl, 3600)
       if (signed) refs.push(signed)
     }
   }
 
-  return refs
+  for (const propName of parsePanelAssetNames(panel.props)) {
+    const prop = findAssetByName(
+      (projectData.locations || []).filter((asset) => asset.assetKind === 'prop'),
+      propName,
+    )
+    if (!prop) continue
+    const selected = pickSelectedLocationImage(prop)
+    const signed = toSignedUrlIfCos(selected?.imageUrl, 3600)
+    if (signed) refs.push(signed)
+  }
+
+  return Array.from(new Set(refs))
 }

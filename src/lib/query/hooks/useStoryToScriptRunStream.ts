@@ -8,6 +8,7 @@ import { selectRecoverableRun } from '@/lib/run-runtime/recovery'
 export type StoryToScriptRunParams = {
   episodeId: string
   content: string
+  sourceMode?: 'story' | 'screenplay'
   model?: string
   temperature?: number
   reasoning?: boolean
@@ -80,6 +81,7 @@ export function useStoryToScriptRunStream({ projectId, episodeId }: UseStoryToSc
     buildRequestBody: (params) => ({
       episodeId: params.episodeId,
       content: params.content,
+      sourceMode: params.sourceMode || 'story',
       model: params.model || undefined,
       temperature: params.temperature,
       reasoning: params.reasoning,

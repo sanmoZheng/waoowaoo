@@ -2,6 +2,60 @@ import { describe, expect, it, vi } from 'vitest'
 import { runStoryToScriptOrchestrator } from '@/lib/novel-promotion/story-to-script/orchestrator'
 
 describe('story-to-script orchestrator retry', () => {
+  it('preserves imported screenplay clips and skips screenplay conversion', async () => {
+    const originalDialogue = '韩立：我只想安稳修行。'
+    const runStep = vi.fn(async (_meta, _prompt, action: string) => {
+      if (action === 'analyze_characters') {
+        return { text: JSON.stringify({ characters: [{ name: '韩立' }] }), reasoning: '' }
+      }
+      if (action === 'analyze_locations') {
+        return { text: JSON.stringify({ locations: [{ name: '山洞' }] }), reasoning: '' }
+      }
+      if (action === 'analyze_props') {
+        return { text: JSON.stringify({ props: [] }), reasoning: '' }
+      }
+      if (action === 'split_clips') {
+        return {
+          text: JSON.stringify([{
+            start: '山洞内',
+            end: originalDialogue,
+            summary: '韩立修行',
+            location: '山洞',
+            characters: ['韩立'],
+          }]),
+          reasoning: '',
+        }
+      }
+      throw new Error(`unexpected action: ${action}`)
+    })
+
+    const content = `山洞内，烛火微弱。\n${originalDialogue}`
+    const result = await runStoryToScriptOrchestrator({
+      content,
+      skipScreenplayConversion: true,
+      baseCharacters: [],
+      baseLocations: [],
+      baseCharacterIntroductions: [],
+      promptTemplates: {
+        characterPromptTemplate: '{input}',
+        locationPromptTemplate: '{input}',
+        propPromptTemplate: '{input}',
+        clipPromptTemplate: '{input}',
+        screenplayPromptTemplate: '{clip_content}',
+      },
+      runStep,
+    })
+
+    expect(result.clipList).toHaveLength(1)
+    expect(result.clipList[0]?.content).toBe(content)
+    expect(result.clipList[0]?.content).toContain(originalDialogue)
+    expect(result.screenplayResults).toEqual([])
+    expect(result.summary.screenplaySuccessCount).toBe(0)
+    expect(runStep).not.toHaveBeenCalledWith(
+      expect.anything(), expect.anything(), 'screenplay_conversion', expect.anything(),
+    )
+  })
+
   it('retries retryable step failure up to 3 attempts', async () => {
     const actionCalls = new Map<string, number>()
     const characterMetas: Array<{ stepId: string; stepAttempt?: number }> = []

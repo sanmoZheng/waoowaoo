@@ -32,7 +32,7 @@ Output format (JSON array only):
 [
   {
     "panel_number": 1,
-    "description": "visual action description",
+    "description": "Composition: ...; Camera position: ...; Subject action: ...; Spatial layers: ...; Materials and period details: ...; Continuity: ...; Negative constraints: ...",
     "characters": [
       { "name": "Character Name", "appearance": "appearance name", "slot": "the position beneath the throne steps at the center of the hall" }
     ],
@@ -59,3 +59,6 @@ Planning rules:
 10. Do not shorten, rewrite, summarize, or replace a provided slot phrase with a short token such as `slot_1`, `left`, or `throne_front`.
 11. Return strict JSON only.
 12. ⚠️ JSON SAFETY: All quotation marks in text (""''「」 etc.) MUST be converted to corner brackets「」in JSON string values. NEVER use raw ASCII double quotes " inside string values.
+13. `description` must be an image-generation prompt, not a plot summary. It must contain these seven labeled parts in order: Composition; Camera position and viewing direction; Subject action including origin/destination and orientation; Foreground/midground/background spatial layers; Materials and period details; Continuity with the previous panel; Panel-specific negative constraints.
+14. For movement, explicitly state uphill/downhill, toward/away from camera, and where the subject starts and ends. Camera placement, viewing direction, motion direction, and the background behind the subject must agree.
+15. Preserve ground, road, architecture, and prop materials across adjacent panels. Close shots may blur the background but must retain spatial anchors needed for direction continuity.

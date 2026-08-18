@@ -294,7 +294,7 @@ export const PATCH = apiHandler(async (
   const allowedProjectFields = [
     'analysisModel', 'characterModel', 'locationModel', 'storyboardModel',
     'editModel', 'videoModel', 'audioModel', 'videoRatio', 'artStyle',
-    'ttsRate', 'lipSyncEnabled', 'lipSyncMode', 'capabilityOverrides',
+    'ttsRate', 'lipSyncEnabled', 'lipSyncMode', 'capabilityOverrides', 'globalAssetText', 'workflowMode',
   ] as const
 
   const updateData: Record<string, unknown> = {}
@@ -316,6 +316,28 @@ export const PATCH = apiHandler(async (
       const cleanedOverrides = sanitizeCapabilityOverrides(overrides, modelContextMap)
       validateCapabilityOverrides(cleanedOverrides, modelContextMap)
       updateData.capabilityOverrides = serializeCapabilitySelections(cleanedOverrides)
+      continue
+    }
+
+    if (field === 'globalAssetText') {
+      if (typeof body[field] !== 'string' || body[field].length > 20000) {
+        throw new ApiError('INVALID_PARAMS', {
+          code: 'GLOBAL_CONTEXT_INVALID',
+          field: 'globalAssetText',
+        })
+      }
+      updateData[field] = body[field].trim() || null
+      continue
+    }
+
+    if (field === 'workflowMode') {
+      if (body[field] !== 'agent' && body[field] !== 'script-import') {
+        throw new ApiError('INVALID_PARAMS', {
+          code: 'WORKFLOW_MODE_INVALID',
+          field: 'workflowMode',
+        })
+      }
+      updateData[field] = body[field]
       continue
     }
 

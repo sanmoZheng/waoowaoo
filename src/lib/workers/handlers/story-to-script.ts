@@ -60,6 +60,7 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
   const episodeId = episodeIdRaw.trim()
   const contentRaw = asString(payload.content)
   const inputModel = asString(payload.model).trim()
+  const sourceMode = payload.sourceMode === 'screenplay' ? 'screenplay' : 'story'
   const retryStepKey = asString(payload.retryStepKey).trim()
   const retryStepAttempt = typeof payload.retryStepAttempt === 'number' && Number.isFinite(payload.retryStepAttempt)
     ? Math.max(1, Math.floor(payload.retryStepAttempt))
@@ -410,6 +411,7 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
             async () => await runStoryToScriptOrchestrator({
               concurrency: workflowConcurrency.analysis,
               content,
+              skipScreenplayConversion: sourceMode === 'screenplay',
               baseCharacters: (novelData.characters || []).map((item) => item.name),
               baseLocations: (novelData.locations || [])
                 .filter((item) => readAssetKind(item as unknown as Record<string, unknown>) !== 'prop')

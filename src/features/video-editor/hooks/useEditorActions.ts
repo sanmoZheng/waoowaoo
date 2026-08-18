@@ -86,7 +86,7 @@ export function useEditorActions({ projectId, episodeId }: UseEditorActionsProps
         const response = await apiFetch(`/api/novel-promotion/${projectId}/editor`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ projectData: project })
+            body: JSON.stringify({ episodeId, projectData: project })
         })
 
         if (!response.ok) {
@@ -94,7 +94,7 @@ export function useEditorActions({ projectId, episodeId }: UseEditorActionsProps
         }
 
         return response.json()
-    }, [projectId])
+    }, [episodeId, projectId])
 
     /**
      * 加载项目

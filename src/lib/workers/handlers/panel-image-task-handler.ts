@@ -15,8 +15,11 @@ import {
   AnyObj,
   clampCount,
   collectPanelReferenceImages,
+  findAssetByName,
   findCharacterByName,
+  parsePanelAssetNames,
   parsePanelCharacterReferences,
+  pickSelectedLocationImage,
   pickFirstString,
   resolveNovelData,
 } from './image-task-handler-shared'
@@ -72,6 +75,7 @@ function buildPanelPromptContext(params: {
     videoPrompt: string | null
     location: string | null
     characters: string | null
+    props: string | null
     srtSegment: string | null
     photographyRules: string | null
     actingNotes: string | null
@@ -105,17 +109,35 @@ function buildPanelPromptContext(params: {
 
   const locationContext = (() => {
     if (!params.panel.location) return null
-    const matchedLocation = (params.projectData.locations || []).find(
-      (item) => item.name.toLowerCase() === params.panel.location!.toLowerCase(),
+    const matchedLocation = findAssetByName(
+      (params.projectData.locations || []).filter((asset) => asset.assetKind !== 'prop'),
+      params.panel.location,
     )
     if (!matchedLocation) return null
-    const selectedImage = (matchedLocation.images || []).find((item) => item.isSelected) || matchedLocation.images?.[0]
+    const selectedImage = pickSelectedLocationImage(matchedLocation)
     return {
       name: matchedLocation.name,
-      description: selectedImage?.description || null,
+      summary: matchedLocation.summary || null,
+      selected_asset_description: selectedImage?.description || null,
       available_slots: parseLocationAvailableSlots(selectedImage?.availableSlots),
+      enforcement: '强约束：必须保持该场景的建筑结构、空间拓扑、道路与地面材质、时代特征和标志性物件；仅允许根据本镜头的机位与景别重新构图。',
     }
   })()
+
+  const propContexts = parsePanelAssetNames(params.panel.props).map((propName) => {
+    const prop = findAssetByName(
+      (params.projectData.locations || []).filter((asset) => asset.assetKind === 'prop'),
+      propName,
+    )
+    if (!prop) return { name: propName, description: null, enforcement: '道具必须与剧情描述一致。' }
+    const selectedImage = pickSelectedLocationImage(prop)
+    return {
+      name: prop.name,
+      summary: prop.summary || null,
+      selected_asset_description: selectedImage?.description || null,
+      enforcement: '强约束：必须保持该道具的类别、形制、材质、颜色、年代和关键细节，不得替换成相似但不同的物品。',
+    }
+  })
 
   return {
     panel: {
@@ -127,6 +149,7 @@ function buildPanelPromptContext(params: {
       video_prompt: params.panel.videoPrompt || '',
       location: params.panel.location || '',
       characters: panelCharacters,
+      props: parsePanelAssetNames(params.panel.props),
       source_text: params.panel.srtSegment || '',
       photography_rules: parseJsonUnknown(params.panel.photographyRules),
       acting_notes: parseJsonUnknown(params.panel.actingNotes),
@@ -134,6 +157,14 @@ function buildPanelPromptContext(params: {
     context: {
       character_appearances: characterContexts,
       location_reference: locationContext,
+      prop_references: propContexts,
+      asset_constraint_priority: [
+        '原文剧情与人物动作逻辑',
+        '场景空间结构与材质约束',
+        '道具身份与外观约束',
+        '角色身份与服装约束',
+        '镜头构图与艺术风格',
+      ],
     },
   }
 }
@@ -214,6 +245,7 @@ export async function handlePanelImageTask(job: Job<TaskJobData>) {
       videoPrompt: panel.videoPrompt,
       location: panel.location,
       characters: panel.characters,
+      props: panel.props,
       srtSegment: panel.srtSegment,
       photographyRules: panel.photographyRules,
       actingNotes: panel.actingNotes,

@@ -10,6 +10,12 @@ interface UseStoryboardGroupTaskErrorsParams {
   episodeId: string
 }
 
+const STORYBOARD_IMAGE_TASK_TYPES = new Set([
+  'image_panel',
+  'panel_variant',
+  'modify_asset_image',
+])
+
 /**
  * 从数据库查询 panel 级别的 failed tasks，并提供 dismiss 能力。
  * dismiss 通过 API 将 task 状态改为 'dismissed'，数据库为唯一来源。
@@ -30,6 +36,7 @@ export function useStoryboardGroupTaskErrors({
   const panelTaskErrorMap = useMemo(() => {
     const map = new Map<string, { taskId: string; message: string }>()
     for (const task of panelFailedTasksQuery.data || []) {
+      if (!STORYBOARD_IMAGE_TASK_TYPES.has(task.type)) continue
       const display = resolveErrorDisplay(task.error || null)
       if (!display) continue
       if (!map.has(task.targetId)) {
@@ -41,7 +48,7 @@ export function useStoryboardGroupTaskErrors({
 
   const clearPanelTaskError = useCallback((panelId: string) => {
     const taskIds = (panelFailedTasksQuery.data || [])
-      .filter((task) => task.targetId === panelId)
+      .filter((task) => task.targetId === panelId && STORYBOARD_IMAGE_TASK_TYPES.has(task.type))
       .map((task) => task.id)
     if (taskIds.length === 0) return
     dismissMutation.mutate(taskIds)

@@ -52,6 +52,7 @@ const prismaMock = vi.hoisted(() => ({
   },
   novelPromotionVoiceLine: {
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
   },
 }))
 
@@ -145,6 +146,7 @@ describe('worker video processor behavior', () => {
       audioUrl: 'cos/line-1.mp3',
       audioDuration: 1200,
     })
+    prismaMock.novelPromotionVoiceLine.findFirst.mockResolvedValue(null)
 
     const mod = await import('@/lib/workers/video.worker')
     mod.createVideoWorker()

@@ -1136,5 +1136,32 @@
         "supportGenerateAudio": false
       }
     }
+  },
+  {
+    "modelType": "video",
+    "provider": "comfyui",
+    "modelId": "minimax-h3-i2v-local",
+    "capabilities": {
+      "video": {
+        "generationModeOptions": [
+          "normal"
+        ],
+        "durationOptions": [
+          3,
+          5,
+          8,
+          10,
+          15
+        ],
+        "firstlastframe": false,
+        "supportGenerateAudio": true,
+        "fieldI18n": {
+          "duration": {
+            "labelKey": "capability.duration",
+            "unitKey": "unit.second"
+          }
+        }
+      }
+    }
   }
 ]

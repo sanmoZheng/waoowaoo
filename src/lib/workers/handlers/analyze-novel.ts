@@ -81,7 +81,12 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
     },
   })
 
-  let contentToAnalyze = readText(novelData.globalAssetText) || readText(firstEpisode?.novelText)
+  const globalContext = readText(novelData.globalAssetText).trim()
+  const episodeContent = readText(firstEpisode?.novelText).trim()
+  let contentToAnalyze = [
+    globalContext ? `【全局世界观、人物与导演风格约束】\n${globalContext}` : '',
+    episodeContent ? `【本集故事正文】\n${episodeContent}` : '',
+  ].filter(Boolean).join('\n\n')
   if (!contentToAnalyze.trim()) {
     throw new Error('请先填写全局资产设定或剧本内容')
   }

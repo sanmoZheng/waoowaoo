@@ -24,6 +24,8 @@ const sharedMock = vi.hoisted(() => ({
     locations: [
       {
         name: 'Old Town',
+        assetKind: 'location',
+        summary: '旧城区主街，石板路贯穿南北',
         images: [
           {
             isSelected: true,
@@ -31,6 +33,18 @@ const sharedMock = vi.hoisted(() => ({
             availableSlots: JSON.stringify([
               '街道左侧靠墙的留白位置',
             ]),
+          },
+        ],
+      },
+      {
+        name: 'Ancient Lantern',
+        assetKind: 'prop',
+        summary: '明代铜制提灯',
+        images: [
+          {
+            isSelected: true,
+            description: '深色铜质六角提灯，暖色烛光',
+            availableSlots: null,
           },
         ],
       },
@@ -109,6 +123,7 @@ describe('worker panel-image-task-handler behavior', () => {
       videoPrompt: 'dramatic',
       location: 'Old Town',
       characters: JSON.stringify([{ name: 'Hero', appearance: 'default', slot: '街道左侧靠墙的留白位置' }]),
+      props: JSON.stringify(['Ancient Lantern']),
       srtSegment: '台词片段',
       photographyRules: null,
       actingNotes: null,
@@ -162,6 +177,15 @@ describe('worker panel-image-task-handler behavior', () => {
         storyboard_text_json_input: expect.stringContaining('"available_slots"'),
       }),
     }))
+    const promptCalls = promptMock.buildPrompt.mock.calls as unknown as Array<Array<{
+      variables?: { storyboard_text_json_input?: string }
+    }>>
+    const promptContext = String(promptCalls[0]?.[0]?.variables?.storyboard_text_json_input)
+    expect(promptContext).toContain('"selected_asset_description": "雨夜街道"')
+    expect(promptContext).toContain('"prop_references"')
+    expect(promptContext).toContain('"name": "Ancient Lantern"')
+    expect(promptContext).toContain('深色铜质六角提灯')
+    expect(promptContext).toContain('强约束')
 
     expect(prismaMock.novelPromotionPanel.update).toHaveBeenCalledWith({
       where: { id: 'panel-1' },
@@ -187,6 +211,7 @@ describe('worker panel-image-task-handler behavior', () => {
       videoPrompt: 'dramatic',
       location: 'Old Town',
       characters: '[]',
+      props: null,
       srtSegment: null,
       photographyRules: null,
       actingNotes: null,

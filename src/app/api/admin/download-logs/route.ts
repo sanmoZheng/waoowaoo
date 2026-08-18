@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireUserAuth, isErrorResponse } from '@/lib/api-auth'
+import { requireUserAuth, isAdminSession, isErrorResponse } from '@/lib/api-auth'
 import { apiHandler } from '@/lib/api-errors'
 import { readAllLogs } from '@/lib/logging/file-writer'
 
@@ -9,6 +9,9 @@ export const dynamic = 'force-dynamic'
 export const GET = apiHandler(async () => {
     const authResult = await requireUserAuth()
     if (isErrorResponse(authResult)) return authResult
+    if (!isAdminSession(authResult.session)) {
+        return NextResponse.json({ error: 'Administrator access required' }, { status: 403 })
+    }
 
     const logs = await readAllLogs()
     if (!logs) {

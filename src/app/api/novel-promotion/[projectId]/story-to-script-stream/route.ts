@@ -14,6 +14,7 @@ export const POST = apiHandler(async (
   const body = await request.json().catch(() => ({}))
   const episodeId = typeof body?.episodeId === 'string' ? body.episodeId.trim() : ''
   const content = typeof body?.content === 'string' ? body.content.trim() : ''
+  const sourceMode = body?.sourceMode === 'screenplay' ? 'screenplay' : 'story'
 
   if (!episodeId) {
     throw new ApiError('INVALID_PARAMS')
@@ -39,6 +40,7 @@ export const POST = apiHandler(async (
     routePath: `/api/novel-promotion/${projectId}/story-to-script-stream`,
     body: {
       ...body,
+      sourceMode,
       displayMode: 'detail',
     },
     dedupeKey: `story_to_script_run:${episodeId}`,

@@ -83,6 +83,7 @@ async function generateVideoForPanel(
   payload: AnyObj,
   modelId: string,
   projectVideoRatio: string | null | undefined,
+  analysisModel: string | null | undefined,
   generationOptions: VideoOptionMap,
 ): Promise<{ cosKey: string; generationMode: VideoGenerationMode; actualVideoTokens?: number }> {
   if (!panel.imageUrl) {
@@ -106,6 +107,11 @@ async function generateVideoForPanel(
     throw new Error(`Panel ${panel.id} image url invalid`)
   }
   const sourceImageBase64 = await normalizeToBase64ForGeneration(sourceImageUrl)
+  const matchedVoiceLine = await prisma.novelPromotionVoiceLine.findFirst({
+    where: { matchedPanelId: panel.id },
+    orderBy: { lineIndex: 'asc' },
+    select: { content: true, speaker: true },
+  })
 
   let lastFrameImageBase64: string | undefined
   const generationMode: VideoGenerationMode = firstLastFramePayload ? 'firstlastframe' : 'normal'
@@ -148,6 +154,10 @@ async function generateVideoForPanel(
     options: {
       prompt,
       ...(projectVideoRatio ? { aspectRatio: projectVideoRatio } : {}),
+      ...(analysisModel ? { analysisModel } : {}),
+      projectId: job.data.projectId,
+      ...(matchedVoiceLine?.content ? { dialogueContext: matchedVoiceLine.content } : {}),
+      ...(matchedVoiceLine?.speaker ? { dialogueSpeaker: matchedVoiceLine.speaker } : {}),
       ...generationOptions,
       generationMode,
       ...(typeof requestedGenerateAudio === 'boolean' ? { generateAudio: requestedGenerateAudio } : {}),
@@ -202,6 +212,7 @@ async function handleVideoPanelTask(job: Job<TaskJobData>) {
     payload,
     modelId,
     projectModels.videoRatio,
+    projectModels.analysisModel,
     generationOptions,
   )
 

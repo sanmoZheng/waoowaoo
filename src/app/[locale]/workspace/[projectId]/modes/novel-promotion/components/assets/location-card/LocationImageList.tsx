@@ -60,9 +60,7 @@ export default function LocationImageList(props: LocationImageListProps) {
     return (
       <div className="grid grid-cols-3 gap-3">
         {props.images.map((img) => {
-          const isThisSelected = props.selectedImageId
-            ? img.id === props.selectedImageId
-            : img.isSelected
+          const isThisSelected = props.selectedIndex === img.imageIndex
           const slotTaskRunning =
             props.isImageTaskRunning(img.imageIndex) ||
             (props.isGroupTaskRunning && !img.imageUrl)
@@ -82,10 +80,11 @@ export default function LocationImageList(props: LocationImageListProps) {
             <div key={img.id} className="relative group/thumb">
               <div
                 onClick={() => {
-                  if (img.imageUrl) {
-                    props.onImageClick(img.imageUrl)
+                  if (img.imageUrl && phase !== 'generating' && phase !== 'regenerating') {
+                    props.onSelectImage?.(props.locationId, img.imageIndex)
                   }
                 }}
+                onDoubleClick={() => { if (img.imageUrl) props.onImageClick(img.imageUrl) }}
                 className={`rounded-lg overflow-hidden border-2 transition-all relative ${img.imageUrl ? 'cursor-pointer' : 'cursor-default'} ${isThisSelected
                   ? 'border-[var(--glass-stroke-success)] ring-2 ring-[var(--glass-focus-ring)]'
                   : 'border-[var(--glass-stroke-base)] hover:border-[var(--glass-stroke-focus)]'
@@ -136,7 +135,7 @@ export default function LocationImageList(props: LocationImageListProps) {
                   onClick={(e) => {
                     e.stopPropagation()
                     if (phase !== 'generating' && phase !== 'regenerating' && img.imageUrl) {
-                      props.onSelectImage?.(props.locationId, isThisSelected ? null : img.imageIndex)
+                      props.onSelectImage?.(props.locationId, img.imageIndex)
                     }
                   }}
                   disabled={phase === 'generating' || phase === 'regenerating' || !img.imageUrl}
@@ -144,7 +143,7 @@ export default function LocationImageList(props: LocationImageListProps) {
                     ? 'bg-[var(--glass-tone-success-fg)] text-white'
                     : 'bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-accent-from)] hover:text-white'
                     } disabled:opacity-50`}
-                  title={isThisSelected ? t('image.cancelSelection') : t('image.useThis')}
+                  title={isThisSelected ? t('image.optionSelected', { number: img.imageIndex + 1 }) : t('image.useThis')}
                 >
                   <AppIcon name="check" className="w-4 h-4" />
                 </button>

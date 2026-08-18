@@ -32,7 +32,7 @@ interface NovelInputStageProps {
   episodeName?: string
   // 回调函数
   onNovelTextChange: (value: string) => void
-  onNext: () => void
+  onNext: (sourceMode?: 'story' | 'screenplay') => void
   /** 触发智能分集流程（携带当前文本） */
   onSmartSplit?: (text: string) => void
   // 状态
@@ -74,6 +74,7 @@ export default function NovelInputStage({
   const isComposingRef = useRef(false)
   const [localText, setLocalText] = useState(novelText)
   const [stylePresetValue, setStylePresetValue] = useState<string>(DEFAULT_STYLE_PRESET_VALUE)
+  const [sourceMode, setSourceMode] = useState<'story' | 'screenplay'>('story')
   const [aiWriteOpen, setAiWriteOpen] = useState(false)
   const [aiWriteLoading, setAiWriteLoading] = useState(false)
 
@@ -99,13 +100,17 @@ export default function NovelInputStage({
 
   /** 点击"开始创作"时，先检测文本长度 */
   const handleStartClick = useCallback(() => {
+    if (sourceMode === 'screenplay') {
+      onNext('screenplay')
+      return
+    }
     const textLength = localText.trim().length
     if (textLength > LONG_TEXT_THRESHOLD && onSmartSplit) {
       setShowLongTextPrompt(true)
     } else {
-      onNext()
+      onNext(sourceMode)
     }
-  }, [localText, onNext, onSmartSplit])
+  }, [localText, onNext, onSmartSplit, sourceMode])
 
   const handleAiWriteStart = useCallback(async (prompt: string) => {
     if (aiWriteLoading) return
@@ -178,7 +183,27 @@ export default function NovelInputStage({
           }}
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
-          placeholder={`请输入您的剧本或小说内容...\n\nAI 将根据您的文本智能分析：\n• 自动识别场景切换\n• 提取角色对话和动作\n• 生成分镜脚本\n\n例如：\n清晨，阳光透过窗帘洒进房间。小明揉着惺忪的睡眼从床上坐起，看了一眼床头的闹钟——已经八点了！他猛地跳下床，手忙脚乱地开始穿衣服...`}
+          placeholder={sourceMode === 'screenplay'
+            ? t('storyInput.sourceMode.screenplayPlaceholder')
+            : t('storyInput.sourceMode.storyPlaceholder')}
+          topRight={(
+            <div className="flex rounded-xl bg-[var(--glass-bg-muted)] p-1">
+              {(['story', 'screenplay'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setSourceMode(mode)}
+                  disabled={isSubmittingTask || isSwitchingStage}
+                  className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${sourceMode === mode
+                    ? 'bg-[var(--glass-bg-surface)] font-medium text-[var(--glass-text-primary)] shadow-sm'
+                    : 'text-[var(--glass-text-tertiary)] hover:text-[var(--glass-text-secondary)]'
+                    }`}
+                >
+                  {t(`storyInput.sourceMode.${mode}`)}
+                </button>
+              ))}
+            </div>
+          )}
           minRows={PROJECT_STORY_INPUT_MIN_ROWS}
           maxHeightViewportRatio={0.5}
           disabled={isSubmittingTask || isSwitchingStage}
@@ -209,7 +234,9 @@ export default function NovelInputStage({
                 <TaskStatusInline state={stageSwitchingState} className="text-white [&>span]:text-white [&_svg]:text-white" />
               ) : (
                 <>
-                  <span>{t("smartImport.manualCreate.button")}</span>
+                  <span>{sourceMode === 'screenplay'
+                    ? t('storyInput.sourceMode.importButton')
+                    : t('smartImport.manualCreate.button')}</span>
                   <AppIcon name="arrowRight" className="w-4 h-4" />
                 </>
               )}
@@ -306,7 +333,7 @@ export default function NovelInputStage({
         }}
         onContinue={() => {
           setShowLongTextPrompt(false)
-          onNext()
+          onNext(sourceMode)
         }}
       />
     </div>

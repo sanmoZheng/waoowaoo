@@ -34,6 +34,7 @@ interface StoredProvider {
   id?: string
   name?: string
   apiKey?: string
+  baseUrl?: string
 }
 
 interface UserModelOption {
@@ -186,7 +187,11 @@ export const GET = apiHandler(async () => {
     if (provider?.name && typeof provider.name === 'string') {
       providerNameMap.set(providerId, provider.name)
     }
-    if (hasStoredProviderApiKey(provider)) providerIdsWithApiKey.add(providerId)
+    const providerKey = providerId.split(':', 1)[0]?.toLowerCase()
+    const hasLocalEndpoint = providerKey === 'comfyui'
+      && typeof provider.baseUrl === 'string'
+      && provider.baseUrl.trim().length > 0
+    if (hasStoredProviderApiKey(provider) || hasLocalEndpoint) providerIdsWithApiKey.add(providerId)
   })
 
   const grouped: UserModelsPayload = {

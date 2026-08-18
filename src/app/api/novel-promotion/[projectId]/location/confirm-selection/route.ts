@@ -1,19 +1,17 @@
-import { logInfo as _ulogInfo, logWarn as _ulogWarn } from '@/lib/logging/core'
+import { logInfo as _ulogInfo } from '@/lib/logging/core'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { deleteObject } from '@/lib/storage'
-import { resolveStorageKeyFromMediaValue } from '@/lib/media/service'
 import { requireProjectAuthLight, isErrorResponse } from '@/lib/api-auth'
 import { apiHandler, ApiError } from '@/lib/api-errors'
 
 /**
- * POST - 确认场景选择并删除未选中的候选图片
+ * POST - 确认场景选择并保留全部候选图片
  * Body: { locationId }
  * 
  * 工作流程：
  * 1. 验证已经选择了一张图片（有 isSelected 的图片）
- * 2. 删除其他未选中的图片（从 COS 和数据库）
- * 3. 将选中的图片设为唯一图片
+ * 2. 固定当前主图
+ * 3. 保留其他候选图片供后续切换
  */
 export const POST = apiHandler(async (
   request: NextRequest,
@@ -44,15 +42,6 @@ export const POST = apiHandler(async (
 
   const images = location.images || []
 
-  if (images.length <= 1) {
-    // 已经只有一张图片，无需操作
-    return NextResponse.json({
-      success: true,
-      message: '已确认选择',
-      deletedCount: 0
-    })
-  }
-
   // 找到选中的图片
   const selectedImage = location.selectedImageId
     ? images.find((img) => img.id === location.selectedImageId)
@@ -61,38 +50,15 @@ export const POST = apiHandler(async (
     throw new ApiError('INVALID_PARAMS')
   }
 
-  // 删除未选中的图片
-  const deletedImages: string[] = []
-  const imagesToDelete = images.filter((img) => img.id !== selectedImage.id)
-
-  for (const img of imagesToDelete) {
-    if (img.imageUrl) {
-      const key = await resolveStorageKeyFromMediaValue(img.imageUrl)
-      if (key) {
-        try {
-          await deleteObject(key)
-          deletedImages.push(key)
-        } catch {
-          _ulogWarn('Failed to delete COS image:', key)
-        }
-      }
-    }
-  }
-
-  // 在事务中更新数据库
+  // 在事务中只同步选中状态，不删除或重排任何候选图片。
   await prisma.$transaction(async (tx) => {
-    // 删除未选中的图片记录（排除选中的图片 ID）
-    await tx.locationImage.deleteMany({
-      where: {
-        locationId,
-        id: { not: selectedImage.id }
-      }
+    await tx.locationImage.updateMany({
+      where: { locationId },
+      data: { isSelected: false },
     })
-
-    // 更新选中图片的索引为 0
     await tx.locationImage.update({
       where: { id: selectedImage.id },
-      data: { imageIndex: 0 }
+      data: { isSelected: true }
     })
 
     await tx.novelPromotionLocation.update({
@@ -102,11 +68,10 @@ export const POST = apiHandler(async (
   })
 
   _ulogInfo(`✓ 场景确认选择: ${location.name}`)
-  _ulogInfo(`✓ 删除了 ${deletedImages.length} 张未选中的图片`)
 
   return NextResponse.json({
     success: true,
-    message: '已确认选择，其他候选图片已删除',
-    deletedCount: deletedImages.length
+    message: '已确认选择，其他候选图片已保留',
+    deletedCount: 0
   })
 })

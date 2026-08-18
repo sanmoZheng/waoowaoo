@@ -14,6 +14,7 @@ Task:
 For each panel, output a complete panel object with improved cinematic detail.
 If any character already has `slot`, prefer preserving it exactly and use it as a preferred placement anchor.
 Treat `slot` as one full placement phrase from the location context, not as a short token.
+Rewrite every `description` as a Seedream-ready image prompt with seven labeled parts in this order: Composition; Camera position and viewing direction; Subject action including orientation and movement origin/destination; Foreground/midground/background spatial layers; Materials and period details; Continuity with the previous panel; Panel-specific negative constraints.
 
 Required fields per panel:
 - panel_number
@@ -31,7 +32,7 @@ Output schema example (field names must be preserved):
 [
   {
     "panel_number": 1,
-    "description": "panel description",
+    "description": "Composition: ...; Camera position: ...; Subject action: ...; Spatial layers: ...; Materials and period details: ...; Continuity: ...; Negative constraints: ...",
     "characters": [{ "name": "Character", "appearance": "appearance", "slot": "the position beneath the throne steps at the center of the hall" }],
     "location": "location name",
     "scene_type": "daily",
@@ -54,3 +55,6 @@ Rules:
 8. Do not shorten, rewrite, summarize, or replace a provided `slot` phrase with a short token.
 9. Return JSON array only.
 10. ⚠️ JSON SAFETY: All quotation marks in text (""''「」 etc.) MUST be converted to corner brackets「」in JSON string values. NEVER use raw ASCII double quotes " inside string values.
+11. Every description must contain all seven labeled parts. Do not return a short plot or action summary.
+12. For movement, explicitly state uphill/downhill, toward/away from camera, start/end positions, and keep camera direction consistent with the visible background.
+13. Preserve road, ground, building, wardrobe, and key-prop materials across adjacent panels. Close shots may blur the background but must retain decisive spatial anchors.

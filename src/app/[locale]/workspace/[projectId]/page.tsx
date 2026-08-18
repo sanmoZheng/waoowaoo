@@ -74,6 +74,7 @@ export default function ProjectDetailPage() {
   const [analysisModelDraft, setAnalysisModelDraft] = useState('')
   const [isModelSetupModalOpen, setIsModelSetupModalOpen] = useState(false)
   const [modelSetupSaving, setModelSetupSaving] = useState(false)
+  const [switchingEpisodeId, setSwitchingEpisodeId] = useState<string | null>(null)
 
   const userModelsQuery = useUserModels()
   const llmModelOptions = userModelsQuery.data?.llm || []
@@ -108,8 +109,7 @@ export default function ProjectDetailPage() {
 
   // Stage 状态完全由 URL 控制，不再从数据库同步
   // 如果 URL 没有 stage 参数，默认使用 'config'
-  // 🚧 剪辑阶段 (editor) 暂时禁用，自动重定向到成片阶段 (videos)
-  const effectiveStage = currentUrlStage === 'editor' ? 'videos' : (currentUrlStage || 'config')
+  const effectiveStage = currentUrlStage || 'config'
 
   // 获取剧集列表
   const novelPromotionData = project?.novelPromotionData as NovelPromotionData | undefined
@@ -132,6 +132,14 @@ export default function ProjectDetailPage() {
     projectId,
     !isGlobalAssetsView ? selectedEpisodeId : null
   )
+
+  useEffect(() => {
+    if (!switchingEpisodeId) return
+    if (selectedEpisodeId !== switchingEpisodeId || currentEpisode?.id !== switchingEpisodeId) return
+    // 即使命中缓存也保留短暂遮罩，避免切换过快导致用户看不到反馈。
+    const timer = window.setTimeout(() => setSwitchingEpisodeId(null), 600)
+    return () => window.clearTimeout(timer)
+  }, [currentEpisode?.id, selectedEpisodeId, switchingEpisodeId])
 
   // 获取导入状态
   const importStatus = novelPromotionData?.importStatus
@@ -303,6 +311,8 @@ export default function ProjectDetailPage() {
 
   // 选择剧集
   const handleEpisodeSelect = (episodeId: string) => {
+    if (episodeId === selectedEpisodeId || switchingEpisodeId) return
+    setSwitchingEpisodeId(episodeId)
     setIsGlobalAssetsView(false)
     // 同步到URL
     updateUrlParams({ episode: episodeId })
@@ -350,7 +360,7 @@ export default function ProjectDetailPage() {
     hasOutput: false,
   })
 
-  if (isInitializing) {
+  if (isInitializing && !switchingEpisodeId) {
     return (
       <div className="glass-page min-h-screen">
         <Navbar />
@@ -533,6 +543,17 @@ export default function ProjectDetailPage() {
           )}
         </div>
       </main>
+      {switchingEpisodeId && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-white/55 backdrop-blur-[2px] dark:bg-black/45" role="status" aria-live="polite">
+          <div className="glass-surface-elevated flex min-w-56 flex-col items-center gap-3 rounded-2xl px-8 py-6 shadow-2xl">
+            <TaskStatusInline state={initLoadingState} className="[&>span]:sr-only" />
+            <div className="text-base font-semibold text-[var(--glass-text-primary)]">正在切换剧集</div>
+            <div className="text-sm text-[var(--glass-text-secondary)]">
+              {episodes.find((episode) => episode.id === switchingEpisodeId)?.name || tc('loading')}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
