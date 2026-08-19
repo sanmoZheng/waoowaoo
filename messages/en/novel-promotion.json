@@ -152,6 +152,23 @@
       "singleEpisodeWarning": "All content will be processed as one episode"
     }
   },
+  "scriptImport": {
+    "button": "Import script file",
+    "reading": "Reading…",
+    "scriptTabTitle": "Import an external script directly",
+    "scriptTabDescription": "Supports TXT and DOCX. Dialogue and story are preserved while AI lightly normalizes the format and rebuilds this episode's script.",
+    "normalizeConfirm": "The file is readable, but its screenplay structure is not standard. Continue and let AI lightly normalize it?",
+    "errors": {
+      "fileTooLarge": "The file is too large. Select a file under 10 MB.",
+      "empty": "The file is empty.",
+      "tooShort": "The content is too short to recognize as a complete script.",
+      "binary": "The file contains invalid binary content and cannot be read as a text script.",
+      "unstructured": "The content differs too much from a screenplay. Add scenes, actions, or character dialogue and try again.",
+      "docNotSupported": "Legacy .doc files are not supported. Save it as .docx and import again.",
+      "unsupportedType": "Only TXT and DOCX files are supported.",
+      "readFailed": "Could not read the file. Check that it is not damaged and try again."
+    }
+  },
   "execution": {
     "selectEpisode": "Please select an episode first",
     "fillContentFirst": "Please enter content first",

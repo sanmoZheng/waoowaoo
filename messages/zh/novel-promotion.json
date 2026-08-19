@@ -152,6 +152,23 @@
       "singleEpisodeWarning": "单集模式下，所有内容将作为一集处理"
     }
   },
+  "scriptImport": {
+    "button": "从文件导入剧本",
+    "reading": "正在读取…",
+    "scriptTabTitle": "直接导入外部剧本",
+    "scriptTabDescription": "支持 TXT、DOCX。导入后会保留对白和剧情，并由 AI 轻度规范化后重建本集剧本。",
+    "normalizeConfirm": "文件内容可以读取，但剧本格式不够规范。是否交给 AI 做轻度格式调整后继续？",
+    "errors": {
+      "fileTooLarge": "文件过大，请选择小于 10MB 的文件。",
+      "empty": "文件内容为空。",
+      "tooShort": "内容过短，无法识别为完整剧本。",
+      "binary": "文件包含异常内容，无法作为文本剧本读取。",
+      "unstructured": "内容与剧本格式差异过大，请补充场景、动作或人物对白后重新导入。",
+      "docNotSupported": "暂不支持旧版 .doc，请另存为 .docx 后导入。",
+      "unsupportedType": "仅支持 TXT 和 DOCX 文件。",
+      "readFailed": "文件读取失败，请确认文件未损坏后重试。"
+    }
+  },
   "execution": {
     "selectEpisode": "请先选择剧集",
     "fillContentFirst": "请先填写内容",
