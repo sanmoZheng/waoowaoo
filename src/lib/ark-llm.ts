@@ -231,6 +231,9 @@ export function arkResponsesStream(options: ArkResponsesOptions & { temperature?
         resolveResult = resolve
         rejectResult = reject
     })
+    // 流迭代本身可能先抛错，此时调用方不会再读取 result()。预先挂载拒绝处理器，
+    // 避免同一个 Provider 错误形成未处理 Promise rejection 并终止整个 Worker。
+    void resultPromise.catch(() => undefined)
 
     const thinking = options.thinking
         ? {

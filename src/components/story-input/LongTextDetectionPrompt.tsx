@@ -108,7 +108,7 @@ export default function LongTextDetectionPrompt({
             <button
               type="button"
               onClick={onContinue}
-              className="w-full py-2.5 text-sm text-[var(--glass-text-tertiary)] transition-colors hover:text-[var(--glass-text-secondary)]"
+              className="glass-btn-base glass-btn-secondary w-full py-3 text-sm font-medium"
             >
               {copy.continueLabel}
               <span className="ml-1 text-xs opacity-60">

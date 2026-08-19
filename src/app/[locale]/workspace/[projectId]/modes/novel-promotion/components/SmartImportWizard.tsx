@@ -18,6 +18,7 @@ interface SmartImportWizardProps {
   importStatus?: string | null
   /** 预填文本：传入后自动跳过选择页，直接开始分析 */
   initialRawContent?: string
+  deferSaveUntilConfirm?: boolean
 }
 
 export default function SmartImportWizard({
@@ -26,9 +27,10 @@ export default function SmartImportWizard({
   projectId,
   importStatus,
   initialRawContent,
+  deferSaveUntilConfirm,
 }: SmartImportWizardProps) {
   const t = useTranslations('smartImport')
-  const wizard = useWizardState({ projectId, importStatus, onImportComplete, t, initialRawContent })
+  const wizard = useWizardState({ projectId, importStatus, onImportComplete, t, initialRawContent, deferSaveUntilConfirm })
 
   const savingTaskState = wizard.saving
     ? resolveTaskPresentationState({

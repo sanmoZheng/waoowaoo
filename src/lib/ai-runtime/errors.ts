@@ -8,6 +8,8 @@ function toCode(value: string): AiRuntimeErrorCode {
   if (value === 'GENERATION_TIMEOUT') return 'TIMEOUT'
   if (value === 'SENSITIVE_CONTENT') return 'SENSITIVE_CONTENT'
   if (value === 'PARSING_ERROR') return 'PARSE_ERROR'
+  if (value === 'INSUFFICIENT_BALANCE') return 'INSUFFICIENT_BALANCE'
+  if (value === 'FORBIDDEN') return 'FORBIDDEN'
   return 'INTERNAL_ERROR'
 }
 

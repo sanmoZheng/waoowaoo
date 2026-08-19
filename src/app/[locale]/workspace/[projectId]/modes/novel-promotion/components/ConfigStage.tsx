@@ -7,6 +7,7 @@ import SmartImportWizard from './SmartImportWizard'
 import { useWorkspaceStageRuntime } from '../WorkspaceStageRuntimeContext'
 import { useWorkspaceEpisodeStageData } from '../hooks/useWorkspaceEpisodeStageData'
 import type { SplitEpisode } from './smart-import/types'
+import { useProjectData } from '@/lib/query/hooks'
 
 /**
  * 配置阶段 — 整合 NovelInputStage + 长文本智能分集
@@ -20,6 +21,8 @@ export default function ConfigStage() {
   const { episodeName, novelText } = useWorkspaceEpisodeStageData()
   const params = useParams<{ projectId: string }>()
   const projectId = params?.projectId ?? ''
+  const { data: project } = useProjectData(projectId)
+  const episodeCount = project?.novelPromotionData?.episodes?.length ?? 0
 
   // 智能分集模式
   const [smartSplitMode, setSmartSplitMode] = useState(false)
@@ -62,7 +65,8 @@ export default function ConfigStage() {
       onVideoRatioChange={runtime.onVideoRatioChange}
       onArtStyleChange={runtime.onArtStyleChange}
       onNext={runtime.onRunStoryToScript}
-      onSmartSplit={handleSmartSplit}
+      // 项目已经拆成多集时，当前文本就是单集内容，不再重复建议分集。
+      onSmartSplit={episodeCount <= 1 ? handleSmartSplit : undefined}
     />
   )
 }

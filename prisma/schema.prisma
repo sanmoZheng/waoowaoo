@@ -124,7 +124,7 @@ model NovelPromotionEpisode {
   episodeNumber           Int
   name                    String
   description             String?                    @db.Text
-  novelText               String?                    @db.Text
+  novelText               String?                    @db.LongText
   audioUrl                String?                    @db.Text
   audioMediaId            String?
   audioMedia              MediaObject?               @relation("NovelPromotionEpisodeAudioMedia", fields: [audioMediaId], references: [id], onDelete: SetNull)

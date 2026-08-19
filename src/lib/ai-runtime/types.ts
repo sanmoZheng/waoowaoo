@@ -7,6 +7,8 @@ export type AiRuntimeErrorCode =
   | 'PARSE_ERROR'
   | 'TIMEOUT'
   | 'SENSITIVE_CONTENT'
+  | 'INSUFFICIENT_BALANCE'
+  | 'FORBIDDEN'
   | 'INTERNAL_ERROR'
 
 export type AiRuntimeError = Error & {

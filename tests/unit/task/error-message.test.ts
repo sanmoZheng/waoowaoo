@@ -80,4 +80,15 @@ describe('task error message normalization', () => {
     expect(summary.code).toBe('EMPTY_RESPONSE')
     expect(summary.message).toContain('模型返回空响应')
   })
+
+  it('prefers user-friendly message for provider overdue balance', () => {
+    const summary = resolveTaskErrorSummary({
+      error: {
+        code: 'INSUFFICIENT_BALANCE',
+        message: 'Ark Responses failed: 403 AccountOverdueError',
+      },
+    })
+    expect(summary.code).toBe('INSUFFICIENT_BALANCE')
+    expect(summary.message).toBe('余额不足，请先充值。')
+  })
 })

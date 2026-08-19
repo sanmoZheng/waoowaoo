@@ -21,6 +21,12 @@ export async function mapWithConcurrency<TItem, TResult>(
     }
   })
 
-  await Promise.all(workers)
+  // 等待所有并行 worker 都收敛后再抛出首个错误，避免其中一个请求失败时，
+  // 其他仍在运行的请求稍后拒绝并逃逸到进程级 unhandledRejection。
+  const settledWorkers = await Promise.allSettled(workers)
+  const firstFailure = settledWorkers.find(
+    (result): result is PromiseRejectedResult => result.status === 'rejected',
+  )
+  if (firstFailure) throw firstFailure.reason
   return results
 }

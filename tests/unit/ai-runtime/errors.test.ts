@@ -31,4 +31,12 @@ describe('toAiRuntimeError empty response mapping', () => {
     expect(runtimeError.code).toBe('RATE_LIMIT')
     expect(runtimeError.retryable).toBe(true)
   })
+
+  it('maps Ark AccountOverdueError 403 to INSUFFICIENT_BALANCE', () => {
+    const runtimeError = toAiRuntimeError(new Error(
+      'Ark Responses 调用失败: 403 - {"error":{"code":"AccountOverdueError","message":"account has an overdue balance"}}',
+    ))
+    expect(runtimeError.code).toBe('INSUFFICIENT_BALANCE')
+    expect(runtimeError.retryable).toBe(false)
+  })
 })

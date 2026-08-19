@@ -143,6 +143,12 @@ function inferCodeFromMessage(message: string): UnifiedErrorCode | null {
     return explicitMatch[1]
   }
 
+  // Provider 欠费通常同时携带 HTTP 403。必须在通用状态码判断之前识别，
+  // 否则 AccountOverdueError 会被错误归类为普通权限不足。
+  if (containsAny(message, ['accountoverdueerror', 'overdue balance', 'overdue', 'account has an overdue'])) {
+    return 'INSUFFICIENT_BALANCE'
+  }
+
   const statusMatch = message.match(/\bstatus\s+(\d{3})\b/)
   if (statusMatch) {
     const parsedStatus = Number.parseInt(statusMatch[1] || '', 10)
@@ -170,8 +176,6 @@ function inferCodeFromMessage(message: string): UnifiedErrorCode | null {
   if (isVideoApiFormatUnsupportedMessage(message)) return 'VIDEO_API_FORMAT_UNSUPPORTED'
   if (containsAny(message, ['task cancelled', 'canceled by user', 'cancelled by user', '任务已取消'])) return 'CONFLICT'
   if (containsAny(message, ['unauthorized', 'not authenticated', 'need login', '401'])) return 'UNAUTHORIZED'
-  // AccountOverdueError（ARK 欠费 403）必须在 FORBIDDEN 之前检查
-  if (containsAny(message, ['accountoverdueerror', 'overdue balance', 'overdue', 'account has an overdue'])) return 'INSUFFICIENT_BALANCE'
   if (containsAny(message, ['forbidden', 'permission denied', '403'])) return 'FORBIDDEN'
   if (containsAny(message, ['not found', '不存在', 'missing record'])) return 'NOT_FOUND'
   if (containsAny(message, ['invalid', 'missing', 'required', 'bad request', 'fieldinvalid'])) return 'INVALID_PARAMS'

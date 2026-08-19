@@ -4,25 +4,12 @@ import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { AppIcon } from '@/components/ui/icons'
 import { assessImportedScript } from '@/lib/script-import'
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024
+import { MAX_TEXT_DOCUMENT_FILE_SIZE, readTextDocumentFile } from '@/lib/document-import'
 
 interface ScriptFileImportButtonProps {
   onImported: (text: string) => void | Promise<void>
   disabled?: boolean
   className?: string
-}
-
-async function readScriptFile(file: File): Promise<string> {
-  const extension = file.name.toLowerCase().split('.').pop() || ''
-  if (extension === 'txt') return file.text()
-  if (extension === 'docx') {
-    const mammoth = await import('mammoth/mammoth.browser')
-    const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })
-    return result.value
-  }
-  if (extension === 'doc') throw new Error('docNotSupported')
-  throw new Error('unsupportedType')
 }
 
 export default function ScriptFileImportButton({ onImported, disabled = false, className = '' }: ScriptFileImportButtonProps) {
@@ -32,14 +19,14 @@ export default function ScriptFileImportButton({ onImported, disabled = false, c
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > MAX_TEXT_DOCUMENT_FILE_SIZE) {
       window.alert(t('errors.fileTooLarge'))
       return
     }
 
     setReading(true)
     try {
-      const text = (await readScriptFile(file)).replace(/\r\n?/g, '\n').trim()
+      const text = (await readTextDocumentFile(file)).replace(/\r\n?/g, '\n').trim()
       const assessment = assessImportedScript(text)
       if (assessment.level === 'reject') {
         window.alert(t(`errors.${assessment.reason || 'unstructured'}`))
@@ -78,4 +65,3 @@ export default function ScriptFileImportButton({ onImported, disabled = false, c
     </>
   )
 }
-

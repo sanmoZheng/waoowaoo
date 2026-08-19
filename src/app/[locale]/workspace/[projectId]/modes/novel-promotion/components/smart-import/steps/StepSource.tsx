@@ -1,9 +1,13 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useRef, useState } from 'react'
 import { countWords } from '@/lib/word-count'
 import type { EpisodeMarkerResult } from '@/lib/episode-marker-detector'
 import { AppIcon } from '@/components/ui/icons'
+import { MAX_TEXT_DOCUMENT_FILE_SIZE, readTextDocumentFile } from '@/lib/document-import'
+
+const MAX_IMPORT_WORDS = 30000
 
 interface StepSourceProps {
   onManualCreate: () => void
@@ -31,6 +35,40 @@ export default function StepSource({
   onUseAiSplit,
 }: StepSourceProps) {
   const t = useTranslations('smartImport')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [fileName, setFileName] = useState('')
+  const [readingFile, setReadingFile] = useState(false)
+
+  const handleDocumentFile = async (file: File | undefined) => {
+    if (!file) return
+    if (file.size > MAX_TEXT_DOCUMENT_FILE_SIZE) {
+      window.alert(t('errors.fileTooLarge'))
+      return
+    }
+    if (rawContent.trim() && !window.confirm(t('upload.replaceConfirm'))) return
+
+    setReadingFile(true)
+    try {
+      const content = (await readTextDocumentFile(file)).replace(/\r\n?/g, '\n').trim()
+      if (!content) {
+        window.alert(t('errors.fileEmpty'))
+        return
+      }
+      if (countWords(content) > MAX_IMPORT_WORDS) {
+        window.alert(t('errors.contentTooLong'))
+        return
+      }
+      onRawContentChange(content)
+      setFileName(file.name)
+    } catch (fileError) {
+      const key = fileError instanceof Error ? fileError.message : 'fileReadError'
+      const knownKey = ['docNotSupported', 'unsupportedType'].includes(key) ? key : 'fileReadError'
+      window.alert(t(`errors.${knownKey}`))
+    } finally {
+      setReadingFile(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   return (
     <div className="min-h-[calc(100vh-200px)] flex items-center justify-center p-8">
@@ -139,6 +177,23 @@ export default function StepSource({
             </div>
 
             <div className="flex-grow flex flex-col">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                onChange={(event) => void handleDocumentFile(event.target.files?.[0])}
+              />
+              <button
+                type="button"
+                disabled={readingFile}
+                onClick={() => fileInputRef.current?.click()}
+                className="mb-4 flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--glass-stroke-base)] bg-[var(--glass-bg-muted)] px-4 py-4 text-sm text-[var(--glass-text-secondary)] transition-colors hover:border-[var(--glass-stroke-focus)] disabled:opacity-50"
+              >
+                <AppIcon name="fileText" className="h-5 w-5 text-[var(--glass-tone-info-fg)]" />
+                <span className="font-medium">{readingFile ? t('upload.reading') : t('upload.clickUpload')}</span>
+                <span className="text-[var(--glass-text-tertiary)]">{fileName || t('upload.supportedFormats')}</span>
+              </button>
               <textarea
                 value={rawContent}
                 onChange={(e) => onRawContentChange(e.target.value)}

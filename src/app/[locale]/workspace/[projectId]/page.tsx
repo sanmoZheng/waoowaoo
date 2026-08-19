@@ -75,6 +75,7 @@ export default function ProjectDetailPage() {
   const [isModelSetupModalOpen, setIsModelSetupModalOpen] = useState(false)
   const [modelSetupSaving, setModelSetupSaving] = useState(false)
   const [switchingEpisodeId, setSwitchingEpisodeId] = useState<string | null>(null)
+  const [isSmartImportOpen, setIsSmartImportOpen] = useState(false)
 
   const userModelsQuery = useUserModels()
   const llmModelOptions = userModelsQuery.data?.llm || []
@@ -146,7 +147,7 @@ export default function ProjectDetailPage() {
 
   // 零状态：无剧集且非导入中 → 自动创建第一集
   const isZeroState = episodes.length === 0
-  const shouldShowImportWizard = importStatus === 'pending' // 仅分集预览中才显示 wizard
+  const shouldShowImportWizard = importStatus === 'pending' || isSmartImportOpen
   const shouldAutoCreateEpisode = isZeroState && importStatus !== 'pending'
   const autoCreateTriggered = useRef(false)
 
@@ -235,6 +236,7 @@ export default function ProjectDetailPage() {
     _ulogInfo('[Page] handleSmartImportComplete 被调用，triggerGlobalAnalysis:', triggerGlobalAnalysis)
 
     try {
+      setIsSmartImportOpen(false)
       // 🔥 刷新项目数据
       queryClient.invalidateQueries({ queryKey: queryKeys.projectData(projectId) })
 
@@ -509,29 +511,61 @@ export default function ProjectDetailPage() {
               </div>
             ) : (
               // 导入中（pending）：显示分集预览向导
-              <SmartImportWizard
-                projectId={projectId}
-                onManualCreate={() => handleCreateEpisode(`${t('episode')} 1`)}
-                onImportComplete={handleSmartImportComplete}
-                importStatus={importStatus}
-              />
+              <div>
+                {isSmartImportOpen && episodes.length > 0 && (
+                  <div className="glass-surface mb-4 flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                    <p className="text-sm text-[var(--glass-tone-warning-fg)]">
+                      {t('smartImport.replaceNotice')}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsSmartImportOpen(false)}
+                      className="glass-btn-base glass-btn-secondary px-4 py-2"
+                    >
+                      {t('smartImport.back')}
+                    </button>
+                  </div>
+                )}
+                <SmartImportWizard
+                  projectId={projectId}
+                  onManualCreate={() => {
+                    if (episodes.length > 0) setIsSmartImportOpen(false)
+                    else void handleCreateEpisode(`${t('episode')} 1`)
+                  }}
+                  onImportComplete={handleSmartImportComplete}
+                  importStatus={importStatus}
+                  deferSaveUntilConfirm={isSmartImportOpen && episodes.length > 0}
+                />
+              </div>
             )
           ) : selectedEpisodeId && currentEpisode ? (
             // 剧集工作区（确保所有数据都准备好）
-            <NovelPromotionWorkspace
-              project={project}
-              projectId={projectId}
-              episodeId={selectedEpisodeId}
-              episode={currentEpisode}
-              viewMode="episode"
-              urlStage={effectiveStage}
-              onStageChange={updateUrlStage}
-              episodes={episodes}
-              onEpisodeSelect={handleEpisodeSelect}
-              onEpisodeCreate={() => handleCreateEpisode(`${t('episode')} ${episodes.length + 1}`)}
-              onEpisodeRename={handleRenameEpisode}
-              onEpisodeDelete={handleDeleteEpisode}
-            />
+            <div>
+              <div className="mb-4 flex justify-end pt-20">
+                <button
+                  type="button"
+                  onClick={() => setIsSmartImportOpen(true)}
+                  className="glass-btn-base glass-btn-secondary flex items-center gap-2 px-4 py-2"
+                >
+                  <AppIcon name="sparkles" className="h-4 w-4" />
+                  {t('smartImport.open')}
+                </button>
+              </div>
+              <NovelPromotionWorkspace
+                project={project}
+                projectId={projectId}
+                episodeId={selectedEpisodeId}
+                episode={currentEpisode}
+                viewMode="episode"
+                urlStage={effectiveStage}
+                onStageChange={updateUrlStage}
+                episodes={episodes}
+                onEpisodeSelect={handleEpisodeSelect}
+                onEpisodeCreate={() => handleCreateEpisode(`${t('episode')} ${episodes.length + 1}`)}
+                onEpisodeRename={handleRenameEpisode}
+                onEpisodeDelete={handleDeleteEpisode}
+              />
+            </div>
           ) : (
             // 加载中
             <div className="glass-surface p-8 text-center">

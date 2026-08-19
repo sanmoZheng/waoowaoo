@@ -22,9 +22,11 @@ interface UseWizardStateParams {
   t: Translate
   /** 预填文本：传入后自动设置并触发分析 */
   initialRawContent?: string
+  /** 已有剧集重新导入时，分析阶段只生成预览，最终确认后再覆盖数据库 */
+  deferSaveUntilConfirm?: boolean
 }
 
-export function useWizardState({ projectId, importStatus, onImportComplete, t, initialRawContent }: UseWizardStateParams) {
+export function useWizardState({ projectId, importStatus, onImportComplete, t, initialRawContent, deferSaveUntilConfirm = false }: UseWizardStateParams) {
   const initialStage: WizardStage = importStatus === 'pending' ? 'preview' : 'select'
   const [stage, setStage] = useState<WizardStage>(initialStage)
   const [rawContent, setRawContent] = useState(initialRawContent || '')
@@ -78,23 +80,21 @@ export function useWizardState({ projectId, importStatus, onImportComplete, t, i
       const splitEpisodes = data.episodes || []
       setEpisodes(splitEpisodes)
 
-      let saveSucceeded = true
-      try {
-        await saveProjectEpisodesBatchMutation.mutateAsync({
-          episodes: splitEpisodes.map((ep: SplitEpisode) => ({
-            name: ep.title,
-            description: ep.summary,
-            novelText: ep.content,
-          })),
-          clearExisting: true,
-          importStatus: 'pending',
-        })
-      } catch {
-        saveSucceeded = false
-        _ulogWarn('[SmartImport] 自动保存失败，继续显示预览')
-      }
-      if (saveSucceeded) {
-        _ulogInfo('[SmartImport] 剧集已自动保存到数据库，状态：pending')
+      if (!deferSaveUntilConfirm) {
+        try {
+          await saveProjectEpisodesBatchMutation.mutateAsync({
+            episodes: splitEpisodes.map((ep: SplitEpisode) => ({
+              name: ep.title,
+              description: ep.summary,
+              novelText: ep.content,
+            })),
+            clearExisting: true,
+            importStatus: 'pending',
+          })
+          _ulogInfo('[SmartImport] 剧集已自动保存到数据库，状态：pending')
+        } catch {
+          _ulogWarn('[SmartImport] 自动保存失败，继续显示预览')
+        }
       }
 
       setStage('preview')
@@ -103,7 +103,7 @@ export function useWizardState({ projectId, importStatus, onImportComplete, t, i
       setError(message || t('errors.analyzeFailed'))
       setStage('select')
     }
-  }, [rawContent, saveProjectEpisodesBatchMutation, splitProjectEpisodesMutation, t])
+  }, [deferSaveUntilConfirm, rawContent, saveProjectEpisodesBatchMutation, splitProjectEpisodesMutation, t])
 
   const handleAnalyze = useCallback(async () => {
     _ulogInfo('[SmartImport] handleAnalyze 被调用')
@@ -141,7 +141,7 @@ export function useWizardState({ projectId, importStatus, onImportComplete, t, i
       autoAnalyzeTriggered.current = true
       void handleAnalyze()
     }
-  }) // eslint-disable-line react-hooks/exhaustive-deps
+  })
 
 
   const handleMarkerSplit = useCallback(async () => {
@@ -156,23 +156,21 @@ export function useWizardState({ projectId, importStatus, onImportComplete, t, i
       const splitEpisodes = data.episodes || []
       setEpisodes(splitEpisodes)
 
-      let saveSucceeded = true
-      try {
-        await saveProjectEpisodesBatchMutation.mutateAsync({
-          episodes: splitEpisodes.map((ep: SplitEpisode) => ({
-            name: ep.title,
-            description: ep.summary,
-            novelText: ep.content,
-          })),
-          clearExisting: true,
-          importStatus: 'pending',
-        })
-      } catch {
-        saveSucceeded = false
-        _ulogWarn('[SmartImport] 标记分割保存失败，继续显示预览')
-      }
-      if (saveSucceeded) {
-        _ulogInfo('[SmartImport] 标记分割剧集已保存')
+      if (!deferSaveUntilConfirm) {
+        try {
+          await saveProjectEpisodesBatchMutation.mutateAsync({
+            episodes: splitEpisodes.map((ep: SplitEpisode) => ({
+              name: ep.title,
+              description: ep.summary,
+              novelText: ep.content,
+            })),
+            clearExisting: true,
+            importStatus: 'pending',
+          })
+          _ulogInfo('[SmartImport] 标记分割剧集已保存')
+        } catch {
+          _ulogWarn('[SmartImport] 标记分割保存失败，继续显示预览')
+        }
       }
 
       setStage('preview')
@@ -181,7 +179,7 @@ export function useWizardState({ projectId, importStatus, onImportComplete, t, i
       setError(message || t('errors.analyzeFailed'))
       setStage('select')
     }
-  }, [markerResult, rawContent, saveProjectEpisodesBatchMutation, splitProjectEpisodesByMarkersMutation, t])
+  }, [deferSaveUntilConfirm, markerResult, rawContent, saveProjectEpisodesBatchMutation, splitProjectEpisodesByMarkersMutation, t])
 
   const updateEpisodeTitle = useCallback((index: number, title: string) => {
     setEpisodes((prev) => prev.map((ep, i) => (i === index ? { ...ep, title } : ep)))
