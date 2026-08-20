@@ -7,10 +7,7 @@ COPY prisma ./prisma
 RUN npm ci
 
 # ==================== Stage 2: Build ====================
-FROM node:20-alpine AS builder
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
+FROM deps AS builder
 COPY . .
 
 # Prisma generate + Next.js build
