@@ -14,6 +14,7 @@ export type WorkerLLMStreamContext = {
 
 export type WorkerInternalLLMStreamCallbacks = InternalLLMStreamCallbacks & {
   flush: () => Promise<void>
+  flushInBackground: () => void
 }
 
 export type WorkerLLMActiveController = {
@@ -40,12 +41,25 @@ export function createWorkerLLMStreamCallbacks(
   streamContext: WorkerLLMStreamContext,
   activeController?: WorkerLLMActiveController,
 ): WorkerInternalLLMStreamCallbacks {
-  const maxChunkChars = 128
+  const chunkBatchChars = 1024
+  const maxBufferedChars = 2000
+  const chunkBatchDelayMs = 1000
   const activeProbeIntervalMs = 600
   let publishQueue: Promise<void> = Promise.resolve()
   let terminatedError: TaskTerminatedError | null = null
   let checkingActive = false
   let lastActiveProbeAt = 0
+  let batchTimer: ReturnType<typeof setTimeout> | null = null
+  const chunkBatches = new Map<string, {
+    kind: LLMStreamKind
+    delta: string
+    lane: string
+    stepId: string | null
+    stepAttempt: number | null
+    stepTitle: string | null
+    stepIndex: number | null
+    stepTotal: number | null
+  }>()
 
   const markTerminated = (stage: string) => {
     if (terminatedError) return
@@ -111,6 +125,49 @@ export function createWorkerLLMStreamCallbacks(
       })
   }
 
+  const publishBufferedChunks = () => {
+    if (batchTimer) {
+      clearTimeout(batchTimer)
+      batchTimer = null
+    }
+    if (chunkBatches.size === 0) return
+
+    const batches = [...chunkBatches.values()]
+    chunkBatches.clear()
+    for (const batch of batches) {
+      enqueue('worker_llm_stream', async () => {
+        await reportTaskStreamChunk(
+          job,
+          {
+            kind: batch.kind,
+            delta: batch.delta,
+            seq: nextWorkerStreamSeq(streamContext, batch.stepId, batch.lane),
+            lane: batch.lane,
+          },
+          {
+            stage: 'worker_llm_stream',
+            stageLabel: 'progress.runtime.stage.llmStreaming',
+            displayMode: 'detail',
+            done: false,
+            message: batch.kind === 'reasoning' ? 'progress.runtime.llm.reasoning' : 'progress.runtime.llm.output',
+            streamRunId: streamContext.streamRunId,
+            ...(batch.stepId ? { stepId: batch.stepId } : {}),
+            ...(batch.stepAttempt ? { stepAttempt: batch.stepAttempt } : {}),
+            ...(batch.stepTitle ? { stepTitle: batch.stepTitle } : {}),
+            ...(batch.stepIndex ? { stepIndex: batch.stepIndex } : {}),
+            ...(batch.stepTotal ? { stepTotal: batch.stepTotal } : {}),
+          },
+        )
+      })
+    }
+  }
+
+  const scheduleBatchPublish = () => {
+    if (batchTimer) return
+    batchTimer = setTimeout(publishBufferedChunks, chunkBatchDelayMs)
+    batchTimer.unref?.()
+  }
+
   return {
     onStage: ({ stage, provider, step }) => {
       ensureActiveOrThrow(`worker_llm_stage:${stage}`)
@@ -171,37 +228,30 @@ export function createWorkerLLMStreamCallbacks(
           ? Math.max(stepIndex || 1, Math.floor(step.total))
           : null
       const laneKey = lane || (kind === 'reasoning' ? 'reasoning' : 'main')
-      for (let i = 0; i < delta.length; i += maxChunkChars) {
-        const piece = delta.slice(i, i + maxChunkChars)
-        if (!piece) continue
-        enqueue('worker_llm_stream', async () => {
-          await reportTaskStreamChunk(
-            job,
-            {
-              kind: kind as LLMStreamKind,
-              delta: piece,
-              seq: nextWorkerStreamSeq(streamContext, stepId, laneKey),
-              lane: laneKey,
-            },
-            {
-              stage: 'worker_llm_stream',
-              stageLabel: 'progress.runtime.stage.llmStreaming',
-              displayMode: 'detail',
-              done: false,
-              message: kind === 'reasoning' ? 'progress.runtime.llm.reasoning' : 'progress.runtime.llm.output',
-              streamRunId: streamContext.streamRunId,
-              ...(stepId ? { stepId } : {}),
-              ...(stepAttempt ? { stepAttempt } : {}),
-              ...(stepTitle ? { stepTitle } : {}),
-              ...(stepIndex ? { stepIndex } : {}),
-              ...(stepTotal ? { stepTotal } : {}),
-            },
-          )
-        })
+      const batchKey = `${stepId || '__default'}|${laneKey}`
+      const previous = chunkBatches.get(batchKey)
+      const combined = `${previous?.delta || ''}${delta}`
+      chunkBatches.set(batchKey, {
+        kind: kind as LLMStreamKind,
+        // 进度流只保留最近内容；完整结果由 onComplete 单独发布。
+        delta: combined.slice(-maxBufferedChars),
+        lane: laneKey,
+        stepId,
+        stepAttempt,
+        stepTitle,
+        stepIndex,
+        stepTotal,
+      })
+      if (combined.length >= chunkBatchChars) {
+        publishBufferedChunks()
+      } else {
+        scheduleBatchPublish()
       }
     },
     onComplete: (text, step) => {
       ensureActiveOrThrow('worker_llm_complete')
+      // 确保该步骤最后一批增量排在完成事件之前。
+      publishBufferedChunks()
       const stepId = typeof step?.id === 'string' && step.id.trim() ? step.id.trim() : null
       const stepAttempt =
         typeof step?.attempt === 'number' && Number.isFinite(step.attempt)
@@ -265,10 +315,15 @@ export function createWorkerLLMStreamCallbacks(
       })
     },
     async flush() {
+      publishBufferedChunks()
       await publishQueue.catch(() => undefined)
       if (terminatedError) {
         throw terminatedError
       }
+    },
+    flushInBackground() {
+      publishBufferedChunks()
+      void publishQueue.catch(() => undefined)
     },
   }
 }

@@ -218,6 +218,7 @@ async function handleBatchConfirmProfile(job: Job<TaskJobData>) {
     stageLabel: '准备批量角色档案确认参数',
     displayMode: 'detail',
     message: `共 ${unconfirmedCharacters.length} 个角色`,
+    meta: { completed: 0, total: unconfirmedCharacters.length },
   })
   await assertTaskActive(job, 'character_profile_batch_prepare')
 
@@ -227,23 +228,42 @@ async function handleBatchConfirmProfile(job: Job<TaskJobData>) {
   for (let index = 0; index < unconfirmedCharacters.length; index++) {
     const character = unconfirmedCharacters[index]
     await assertTaskActive(job, 'character_profile_batch_loop_character')
-    const progress = 18 + Math.floor(((index + 1) / totalCount) * 78)
+    const progress = 18 + Math.floor((index / totalCount) * 78)
     await reportTaskProgress(job, progress, {
       stage: 'character_profile_batch_loop_character',
       stageLabel: '批量角色档案确认中',
       displayMode: 'detail',
       message: `${index + 1}/${totalCount} ${character.name}`,
-      meta: { characterId: character.id, index: index + 1, total: totalCount },
+      meta: {
+        characterId: character.id,
+        characterName: character.name,
+        index: index + 1,
+        completed: successCount,
+        total: totalCount,
+      },
     })
     await handleConfirmProfile(job, { characterId: character.id }, { suppressProgress: true })
     successCount += 1
+    await reportTaskProgress(job, 18 + Math.floor((successCount / totalCount) * 78), {
+      stage: 'character_profile_batch_character_done',
+      stageLabel: '角色视觉描述已生成',
+      displayMode: 'detail',
+      message: `${successCount}/${totalCount} ${character.name}`,
+      meta: {
+        characterId: character.id,
+        characterName: character.name,
+        completed: successCount,
+        total: totalCount,
+      },
+    })
   }
 
   await reportTaskProgress(job, 96, {
     stage: 'character_profile_batch_done',
     stageLabel: '批量角色档案确认完成',
     displayMode: 'detail',
-    meta: { count: successCount },
+    message: `${successCount}/${totalCount}`,
+    meta: { count: successCount, completed: successCount, total: totalCount },
   })
 
   return {

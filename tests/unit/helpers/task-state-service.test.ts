@@ -42,6 +42,8 @@ describe('task state service helpers', () => {
           payload: {
             stage: 'image_generating',
             stageLabel: 'Generating',
+            message: '2/5 顾言深',
+            meta: { characterId: 'c1', completed: 1, total: 5 },
             ui: { intent: 'create', hasOutputAtStart: false },
           },
           errorCode: null,
@@ -56,6 +58,8 @@ describe('task state service helpers', () => {
     expect(state.progress).toBe(42)
     expect(state.stage).toBe('image_generating')
     expect(state.stageLabel).toBe('Generating')
+    expect(state.message).toBe('2/5 顾言深')
+    expect(state.meta).toEqual({ characterId: 'c1', completed: 1, total: 5 })
   })
 
   it('resolves failed state and normalizes error', () => {

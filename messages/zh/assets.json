@@ -341,6 +341,10 @@
         "batchConfirmPrompt": "确认为 {count} 个角色生成视觉描述吗？",
         "batchConfirmSuccess": "✓ 已为 {count} 个角色生成视觉描述",
         "batchConfirmFailed": "批量确认失败: {error}",
+        "batchPreparing": "正在准备角色视觉描述…",
+        "batchProcessingCharacter": "正在处理：{name}",
+        "batchProgressCount": "已完成 {completed}/{total}",
+        "batchIncrementalHint": "每完成一个角色，下方会立即显示其默认形象；实际角色图片仍需点击“生成图片”。",
         "deleteConfirm": "确定要删除此角色吗？此操作不可撤销。",
         "deleteSuccess": "✓ 角色已删除",
         "deleteFailed": "删除失败: {error}"

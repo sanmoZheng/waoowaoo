@@ -65,6 +65,7 @@ vi.mock('@/lib/workers/handlers/llm-stream', () => ({
     onComplete: vi.fn(),
     onError: vi.fn(),
     flush: vi.fn(async () => undefined),
+    flushInBackground: vi.fn(),
   })),
 }))
 vi.mock('@/lib/prompt-i18n', () => ({

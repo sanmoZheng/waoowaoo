@@ -341,6 +341,10 @@
         "batchConfirmPrompt": "Generate visual descriptions for {count} characters?",
         "batchConfirmSuccess": "✓ Visual descriptions generated for {count} characters",
         "batchConfirmFailed": "Batch confirmation failed: {error}",
+        "batchPreparing": "Preparing character visual descriptions…",
+        "batchProcessingCharacter": "Processing: {name}",
+        "batchProgressCount": "Completed {completed}/{total}",
+        "batchIncrementalHint": "Each completed character appears below immediately. Use Generate Images to create actual character images.",
         "deleteConfirm": "Delete this character? This action cannot be undone.",
         "deleteSuccess": "✓ Character deleted",
         "deleteFailed": "Delete failed: {error}"

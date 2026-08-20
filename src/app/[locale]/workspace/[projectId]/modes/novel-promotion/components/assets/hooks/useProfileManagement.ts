@@ -7,7 +7,7 @@
 
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { CharacterProfileData, parseProfileData } from '@/types/character-profile'
 import {
@@ -17,6 +17,10 @@ import {
     useConfirmProjectCharacterProfile,
     useBatchConfirmProjectCharacterProfiles,
 } from '@/lib/query/hooks'
+import { useTaskTargetStateMap } from '@/lib/query/hooks/useTaskTargetStateMap'
+import { TASK_TYPE } from '@/lib/task/types'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query/keys'
 
 interface UseProfileManagementProps {
     projectId: string
@@ -28,6 +32,7 @@ export function useProfileManagement({
     showToast
 }: UseProfileManagementProps) {
     const t = useTranslations('assets')
+    const queryClient = useQueryClient()
     // 🔥 直接订阅缓存 - 消除 props drilling
     const { data: assets } = useProjectAssets(projectId)
     const characters = useMemo(() => assets?.characters ?? [], [assets?.characters])
@@ -42,6 +47,7 @@ export function useProfileManagement({
     const [confirmingCharacterIds, setConfirmingCharacterIds] = useState<Set<string>>(new Set())
     const [deletingCharacterId, setDeletingCharacterId] = useState<string | null>(null)
     const [batchConfirmingLocal, setBatchConfirmingLocal] = useState(false)
+    const lastBatchProgressRef = useRef<string | null>(null)
     const [editingProfile, setEditingProfile] = useState<{
         characterId: string
         characterName: string
@@ -54,21 +60,59 @@ export function useProfileManagement({
         [characters]
     )
 
+    const batchTaskQuery = useTaskTargetStateMap(projectId, [{
+        targetType: 'NovelPromotionProject',
+        targetId: projectId,
+        types: [TASK_TYPE.CHARACTER_PROFILE_BATCH_CONFIRM],
+    }], { staleTime: 0 })
+    const batchTaskState = batchTaskQuery.byKey.get(`NovelPromotionProject:${projectId}`) ?? null
+    const batchTaskRunning = batchTaskState?.phase === 'queued' || batchTaskState?.phase === 'processing'
+    const batchMeta = batchTaskState?.meta
+    const batchProgress = useMemo(() => ({
+        progress: batchTaskState?.progress ?? 0,
+        completed: typeof batchMeta?.completed === 'number' ? batchMeta.completed : 0,
+        total: typeof batchMeta?.total === 'number' ? batchMeta.total : unconfirmedCharacters.length,
+        currentCharacterId: typeof batchMeta?.characterId === 'string' ? batchMeta.characterId : null,
+        currentCharacterName: typeof batchMeta?.characterName === 'string' ? batchMeta.characterName : null,
+        stageLabel: batchTaskState?.stageLabel ?? null,
+    }), [batchMeta, batchTaskState?.progress, batchTaskState?.stageLabel, unconfirmedCharacters.length])
+
+    useEffect(() => {
+        if (!batchConfirmingLocal && !batchTaskRunning) return
+        const refreshTaskState = () => {
+            void queryClient.invalidateQueries({
+                queryKey: queryKeys.tasks.targetStatesAll(projectId),
+                exact: false,
+            })
+        }
+        refreshTaskState()
+        const timer = window.setInterval(refreshTaskState, 1500)
+        return () => window.clearInterval(timer)
+    }, [batchConfirmingLocal, batchTaskRunning, projectId, queryClient])
+
+    useEffect(() => {
+        if (!batchTaskRunning) return
+        const signature = `${batchTaskState?.progress ?? 0}:${batchProgress.completed}:${batchProgress.currentCharacterId ?? ''}`
+        if (lastBatchProgressRef.current === signature) return
+        lastBatchProgressRef.current = signature
+        refreshAssets()
+    }, [batchProgress.completed, batchProgress.currentCharacterId, batchTaskRunning, batchTaskState?.progress, refreshAssets])
+
     // 🔥 合并任务系统状态 + 本地即时反馈状态，判断角色是否在确认中
     const isConfirmingCharacter = useCallback((id: string) => {
         // 本地即时反馈
-        if (confirmingCharacterIds.has(id)) return true
+        if (confirmingCharacterIds.has(id) || (batchTaskRunning && batchProgress.currentCharacterId === id)) return true
         // 任务系统持久化状态（刷新后仍可恢复）
         const character = characters.find(c => c.id === id)
         return !!character?.profileConfirmTaskRunning
-    }, [confirmingCharacterIds, characters])
+    }, [batchProgress.currentCharacterId, batchTaskRunning, confirmingCharacterIds, characters])
 
     // 🔥 batchConfirming 合并本地 + 任务系统状态
     const batchConfirming = useMemo(() => {
         if (batchConfirmingLocal) return true
         // 如果有任何未确认角色正在运行档案确认任务，视为批量确认中
-        return unconfirmedCharacters.some(char => char.profileConfirmTaskRunning)
-    }, [batchConfirmingLocal, unconfirmedCharacters])
+        return batchTaskRunning || unconfirmedCharacters.some(char => char.profileConfirmTaskRunning)
+    }, [batchConfirmingLocal, batchTaskRunning, unconfirmedCharacters])
 
     // 打开编辑对话框
     const handleEditProfile = useCallback((characterId: string, characterName: string) => {
@@ -166,6 +210,7 @@ export function useProfileManagement({
         isConfirmingCharacter,
         deletingCharacterId,
         batchConfirming,
+        batchProgress,
         editingProfile,
         handleEditProfile,
         handleConfirmProfile,

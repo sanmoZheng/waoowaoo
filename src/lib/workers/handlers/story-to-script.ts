@@ -161,7 +161,7 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
     })
   }
   const streamContext = createWorkerLLMStreamContext(job, 'story_to_script')
-  const callbacks = createWorkerLLMStreamCallbacks(job, streamContext, {
+  const createStepCallbacks = () => createWorkerLLMStreamCallbacks(job, streamContext, {
     assertActive: async (stage) => {
       await assertRunActive(stage)
     },
@@ -212,21 +212,27 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
       model,
     })
 
-    const output = await executeAiTextStep({
-      userId: job.data.userId,
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      projectId,
-      action,
-      meta: {
-        ...meta,
-        stepAttempt,
-      },
-      temperature,
-      reasoning,
-      reasoningEffort,
-    })
-    await callbacks.flush()
+    const stepCallbacks = createStepCallbacks()
+    const output = await withInternalLLMStreamCallbacks(
+      stepCallbacks,
+      async () => await executeAiTextStep({
+        userId: job.data.userId,
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        projectId,
+        action,
+        meta: {
+          ...meta,
+          stepAttempt,
+        },
+        temperature,
+        reasoning,
+        reasoningEffort,
+      }),
+    )
+    await assertRunActive(`story_to_script_step_result:${meta.stepId}`)
+    // 流式进度是辅助信息，不能阻塞模型结果解析和业务落库。
+    stepCallbacks.flushInBackground()
 
     logAIAnalysis(job.data.userId, 'worker', projectId, project.name, {
       action: `STORY_TO_SCRIPT_OUTPUT:${action}`,
@@ -304,16 +310,7 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
         }
         let screenplay: AnyObj | null = null
         try {
-          const stepOutput = await (async () => {
-            try {
-              return await withInternalLLMStreamCallbacks(
-                callbacks,
-                async () => await runStep(stepMeta, screenplayPrompt, 'screenplay_conversion', 2200),
-              )
-            } finally {
-              await callbacks.flush()
-            }
-          })()
+          const stepOutput = await runStep(stepMeta, screenplayPrompt, 'screenplay_conversion', 2200)
           screenplay = parseScreenplayPayload(stepOutput.text)
         } catch (error) {
           await createArtifact({
@@ -404,11 +401,7 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
         }
       }
 
-      const result: StoryToScriptOrchestratorResult = await (async () => {
-        try {
-          return await withInternalLLMStreamCallbacks(
-            callbacks,
-            async () => await runStoryToScriptOrchestrator({
+      const result: StoryToScriptOrchestratorResult = await runStoryToScriptOrchestrator({
               concurrency: workflowConcurrency.analysis,
               content,
               skipScreenplayConversion: sourceMode === 'screenplay',
@@ -431,12 +424,7 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
                 screenplayPromptTemplate,
               },
               runStep,
-            }),
-          )
-        } finally {
-          await callbacks.flush()
-        }
-      })()
+            })
 
       await createArtifact({
         runId,

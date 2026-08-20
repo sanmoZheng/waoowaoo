@@ -58,6 +58,14 @@ interface CharacterSectionProps {
     isConfirmingCharacter: (characterId: string) => boolean
     deletingCharacterId: string | null
     batchConfirming: boolean
+    batchProgress?: {
+        progress: number
+        completed: number
+        total: number
+        currentCharacterId: string | null
+        currentCharacterName: string | null
+        stageLabel: string | null
+    }
     batchConfirmingState: TaskPresentationState | null
     onBatchConfirm: () => void
     onEditProfile: (characterId: string, characterName: string) => void
@@ -98,6 +106,14 @@ export default function CharacterSection({
     isConfirmingCharacter,
     deletingCharacterId,
     batchConfirming,
+    batchProgress = {
+        progress: 0,
+        completed: 0,
+        total: unconfirmedCharacters.length,
+        currentCharacterId: null,
+        currentCharacterName: null,
+        stageLabel: null,
+    },
     batchConfirmingState,
     onBatchConfirm,
     onEditProfile,
@@ -237,6 +253,35 @@ export default function CharacterSection({
                             )}
                         </button>
                     </div>
+                    {batchConfirming && (
+                        <div className="mb-4 rounded-xl border border-[var(--glass-tone-info-border)] bg-[var(--glass-tone-info-bg)]/60 px-4 py-3">
+                            <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                                <div className="flex min-w-0 items-center gap-2 font-medium text-[var(--glass-text-primary)]">
+                                    <AppIcon name="loader" className="h-4 w-4 shrink-0 animate-spin text-[var(--glass-tone-info-fg)]" />
+                                    <span className="truncate">
+                                        {batchProgress.currentCharacterName
+                                            ? t('characterProfile.batchProcessingCharacter', { name: batchProgress.currentCharacterName })
+                                            : t('characterProfile.batchPreparing')}
+                                    </span>
+                                </div>
+                                <span className="shrink-0 text-xs text-[var(--glass-text-secondary)]">
+                                    {t('characterProfile.batchProgressCount', {
+                                        completed: batchProgress.completed,
+                                        total: batchProgress.total,
+                                    })}
+                                </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-[var(--glass-bg-muted)]">
+                                <div
+                                    className="h-full rounded-full bg-[var(--glass-tone-info-fg)] transition-[width] duration-500"
+                                    style={{ width: `${Math.max(2, Math.min(100, batchProgress.progress))}%` }}
+                                />
+                            </div>
+                            <p className="mt-2 text-xs text-[var(--glass-text-tertiary)]">
+                                {t('characterProfile.batchIncrementalHint')}
+                            </p>
+                        </div>
+                    )}
                     {/* 待确认卡片网格 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         {unconfirmedCharacters.map((character) => {

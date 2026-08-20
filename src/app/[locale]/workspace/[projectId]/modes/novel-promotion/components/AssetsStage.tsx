@@ -324,6 +324,7 @@ export default function AssetsStage({
     isConfirmingCharacter,
     deletingCharacterId,
     batchConfirming,
+    batchProgress,
     editingProfile,
     handleEditProfile,
     handleConfirmProfile,
@@ -438,6 +439,7 @@ export default function AssetsStage({
             isConfirmingCharacter={isConfirmingCharacter}
             deletingCharacterId={deletingCharacterId}
             batchConfirming={batchConfirming}
+            batchProgress={batchProgress}
             batchConfirmingState={batchConfirmingState}
             onBatchConfirm={handleBatchConfirm}
             onEditProfile={handleEditProfile}

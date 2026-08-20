@@ -164,4 +164,44 @@ describe('createWorkerLLMStreamCallbacks', () => {
       }),
     )
   })
+
+  it('coalesces many small chunks into a small number of Redis publications', async () => {
+    const job = buildJob()
+    const context = createWorkerLLMStreamContext(job, 'story_to_script')
+    const callbacks = createWorkerLLMStreamCallbacks(job, context)
+
+    for (let index = 0; index < 10; index += 1) {
+      callbacks.onChunk?.({
+        kind: 'text',
+        delta: 'x'.repeat(128),
+        seq: index + 1,
+        lane: 'main',
+        step: { id: 'analyze_locations', attempt: 1, title: 'locations', index: 1, total: 1 },
+      })
+    }
+    await callbacks.flush()
+
+    expect(reportTaskStreamChunkMock).toHaveBeenCalledTimes(2)
+    const publishedText = (reportTaskStreamChunkMock.mock.calls as unknown as Array<[unknown, { delta: string }]>)
+      .map((call) => call[1].delta)
+      .join('')
+    expect(publishedText).toHaveLength(1280)
+  })
+
+  it('does not wait for slow progress publication when flushing in background', () => {
+    reportTaskStreamChunkMock.mockImplementationOnce(async () => await new Promise<undefined>(() => undefined))
+    const job = buildJob()
+    const context = createWorkerLLMStreamContext(job, 'story_to_script')
+    const callbacks = createWorkerLLMStreamCallbacks(job, context)
+
+    callbacks.onChunk?.({
+      kind: 'text',
+      delta: 'latest progress',
+      seq: 1,
+      lane: 'main',
+      step: { id: 'analyze_locations', attempt: 1, title: 'locations', index: 1, total: 1 },
+    })
+
+    expect(() => callbacks.flushInBackground()).not.toThrow()
+  })
 })

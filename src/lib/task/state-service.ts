@@ -21,6 +21,8 @@ export type TaskTargetState = {
   progress: number | null
   stage: string | null
   stageLabel: string | null
+  message: string | null
+  meta: Record<string, unknown> | null
   lastError: {
     code: string
     message: string
@@ -68,6 +70,8 @@ export function extractTaskStateFields(task: {
   return {
     stage: asNonEmptyString(payload?.stage),
     stageLabel: asNonEmptyString(payload?.stageLabel),
+    message: asNonEmptyString(payload?.message),
+    meta: asObject(payload?.meta),
     hasOutputAtStart: asBoolean(payloadUi?.hasOutputAtStart),
     intent: coerceTaskIntent(payloadUi?.intent ?? payload?.intent, task.type),
     progress: toProgress(task.progress),
@@ -98,6 +102,8 @@ export function buildIdleState(target: TaskTargetQuery): TaskTargetState {
     progress: null,
     stage: null,
     stageLabel: null,
+    message: null,
+    meta: null,
     lastError: null,
     updatedAt: null,
   }
@@ -146,6 +152,8 @@ export function resolveTargetState(
       progress: runningFields.progress,
       stage: runningFields.stage,
       stageLabel: runningFields.stageLabel,
+      message: runningFields.message,
+      meta: runningFields.meta,
       lastError: null,
       updatedAt: running.updatedAt.toISOString(),
     }
@@ -163,6 +171,8 @@ export function resolveTargetState(
       progress: 100,
       stage: latestFields.stage,
       stageLabel: latestFields.stageLabel,
+      message: latestFields.message,
+      meta: latestFields.meta,
       lastError: null,
       updatedAt: latest.updatedAt.toISOString(),
     }
@@ -179,6 +189,8 @@ export function resolveTargetState(
     progress: null,
     stage: latestFields.stage,
     stageLabel: latestFields.stageLabel,
+    message: latestFields.message,
+    meta: latestFields.meta,
     lastError: normalizeFailedError(latest),
     updatedAt: latest.updatedAt.toISOString(),
   }
