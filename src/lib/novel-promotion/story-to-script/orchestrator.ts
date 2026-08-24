@@ -2,7 +2,7 @@ import { safeParseJsonArray, safeParseJsonObject } from '@/lib/json-repair'
 import { buildCharactersIntroduction } from '@/lib/constants'
 import { normalizeAnyError } from '@/lib/errors/normalize'
 import { createScopedLogger } from '@/lib/logging/core'
-import { createClipContentMatcher, type ClipMatchLevel } from './clip-matching'
+import { createClipContentMatcher, createTextMarkerMatcher, type ClipMatchLevel } from './clip-matching'
 import { mapWithConcurrency } from '@/lib/async/map-with-concurrency'
 import {
   DEFAULT_ANALYSIS_WORKFLOW_CONCURRENCY,
@@ -489,6 +489,66 @@ export async function runStoryToScriptOrchestrator(
         attempt,
         clipCount: nextClipList.length,
         levelCount,
+      })
+      break
+    }
+
+    // Models occasionally paraphrase an end marker even when every clip start is
+    // present in the source. Recover the boundaries from the ordered start markers:
+    // the next clip start is an unambiguous end for the current clip. This keeps all
+    // clip content source-faithful and avoids discarding an otherwise valid response.
+    const markerMatcher = createTextMarkerMatcher(content)
+    const startMatches: Array<ReturnType<typeof markerMatcher.matchMarker>> = []
+    let markerSearchFrom = 0
+    let markerFallbackFailed = false
+    for (const item of rawClipList) {
+      const startText = asString(item.start)
+      const markerMatch = markerMatcher.matchMarker(startText, markerSearchFrom)
+      if (!markerMatch) {
+        markerFallbackFailed = true
+        break
+      }
+      startMatches.push(markerMatch)
+      markerSearchFrom = markerMatch.endIndex
+    }
+
+    if (!markerFallbackFailed && startMatches.length === rawClipList.length) {
+      const lastItem = rawClipList[rawClipList.length - 1]
+      const lastStartMatch = startMatches[startMatches.length - 1]
+      const lastEndMatch = lastStartMatch
+        ? markerMatcher.matchMarker(asString(lastItem?.end), lastStartMatch.endIndex)
+        : null
+      const fallbackClipList: StoryToScriptClipCandidate[] = rawClipList.map((item, index) => {
+        const startMatch = startMatches[index]!
+        const nextStartMatch = startMatches[index + 1]
+        const endIndex = nextStartMatch?.startIndex
+          ?? lastEndMatch?.endIndex
+          ?? content.length
+        const boundaryConfidence = Math.min(
+          startMatch.confidence,
+          nextStartMatch?.confidence ?? lastEndMatch?.confidence ?? 0.9,
+        )
+        return {
+          id: `clip_${index + 1}`,
+          startText: asString(item.start),
+          endText: asString(item.end),
+          summary: asString(item.summary),
+          location: asString(item.location) || null,
+          characters: toStringArray(item.characters),
+          props: toStringArray(item.props),
+          content: content.slice(startMatch.startIndex, endIndex),
+          matchLevel: 'L3',
+          matchConfidence: boundaryConfidence,
+        }
+      })
+
+      splitStep = output
+      clipList = fallbackClipList
+      onLog?.('片段结尾存在改写，已按有序起点从原文恢复边界', {
+        attempt,
+        clipCount: fallbackClipList.length,
+        failedClip: failedAt.clipId,
+        finalEndMatched: Boolean(lastEndMatch),
       })
       break
     }

@@ -75,6 +75,9 @@ export function VideoEditorStage({
 
     const handleExport = async () => {
         try {
+            // 渲染必须使用用户当前看到的工程，避免未保存编辑或首次进入时服务端无工程。
+            await saveProject(project)
+            markSaved()
             const result = await startRender(project.id)
             if (result.outputUrl) {
                 const link = document.createElement('a')
@@ -87,7 +90,8 @@ export function VideoEditorStage({
             alert(t('editor.alert.exportStarted'))
         } catch (error) {
             _ulogError('Export failed:', error)
-            alert(t('editor.alert.exportFailed'))
+            const detail = error instanceof Error ? error.message : t('editor.alert.exportFailed')
+            alert(`${t('editor.alert.exportFailed')}\n${detail}`)
         }
     }
 
@@ -142,6 +146,7 @@ export function VideoEditorStage({
             <div style={{
                 display: 'flex',
                 flex: 1,
+                minHeight: 0,
                 overflow: 'hidden'
             }}>
                 {/* Left Panel - Media Library */}
@@ -160,10 +165,11 @@ export function VideoEditorStage({
                 </div>
 
                 {/* Center - Preview + Properties */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                     {/* Preview */}
                     <div style={{
                         flex: 1,
+                        minHeight: 0,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -187,7 +193,11 @@ export function VideoEditorStage({
                         gap: '16px',
                         padding: '12px',
                         background: 'var(--glass-bg-surface-strong)',
-                        borderTop: '1px solid var(--glass-stroke-base)'
+                        borderTop: '1px solid var(--glass-stroke-base)',
+                        flexShrink: 0,
+                        minHeight: '64px',
+                        position: 'relative',
+                        zIndex: 2
                     }}>
                         <button
                             onClick={() => seek(0)}
@@ -284,7 +294,12 @@ export function VideoEditorStage({
             {/* Timeline */}
             <div style={{
                 height: '220px',
-                borderTop: '1px solid var(--glass-stroke-base)'
+                minHeight: '220px',
+                flexShrink: 0,
+                borderTop: '1px solid var(--glass-stroke-base)',
+                position: 'relative',
+                zIndex: 1,
+                background: 'var(--glass-bg-surface)'
             }}>
                 <Timeline
                     clips={project.timeline}

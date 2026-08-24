@@ -93,6 +93,21 @@
     "enterEdit": "Enter Editor",
     "back": "Back"
   },
+  "clipGroup": {
+    "title": "Segment {index}",
+    "shotCount": "{count} shots",
+    "generatedCount": "Generated {generated}/{total}",
+    "preview": "Preview segment"
+  },
+  "clipPreview": {
+    "title": "Segment {index} preview",
+    "progress": "Playing {current}/{total}",
+    "shot": "Shot {number}",
+    "previous": "Previous",
+    "next": "Next",
+    "jumpToShot": "Jump to shot {number}",
+    "close": "Close preview"
+  },
   "stage": {
     "title": "Video Generation",
     "generateAll": "Generate All",

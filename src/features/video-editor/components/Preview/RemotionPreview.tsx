@@ -106,6 +106,7 @@ export const RemotionPreview: React.FC<RemotionPreviewProps> = ({
                 width: '100%',
                 aspectRatio: `${project.config.width} / ${project.config.height}`,
                 maxHeight: '100%',
+                minHeight: 0,
                 background: 'var(--glass-bg-surface)',
                 border: '1px solid var(--glass-stroke-base)',
                 display: 'flex',
@@ -129,6 +130,7 @@ export const RemotionPreview: React.FC<RemotionPreviewProps> = ({
             width: '100%',
             aspectRatio: `${project.config.width} / ${project.config.height}`,
             maxHeight: '100%',
+            minHeight: 0,
             background: 'var(--glass-overlay-strong)',
             borderRadius: '8px',
             overflow: 'hidden'

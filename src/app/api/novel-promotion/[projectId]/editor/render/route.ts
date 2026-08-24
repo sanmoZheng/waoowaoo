@@ -14,9 +14,12 @@ import type { VideoEditorProject } from '@/features/video-editor'
 export const runtime = 'nodejs'
 const execFileAsync = promisify(execFile)
 
-async function findEditor(projectId: string) {
+async function findEditor(projectId: string, episodeId?: string | null) {
   return prisma.videoEditorProject.findFirst({
-    where: { episode: { novelPromotionProject: { projectId } } },
+    where: {
+      ...(episodeId ? { episodeId } : {}),
+      episode: { novelPromotionProject: { projectId } },
+    },
   })
 }
 
@@ -27,8 +30,9 @@ export const POST = apiHandler(async (
   const { projectId } = await params
   const authResult = await requireProjectAuthLight(projectId)
   if (isErrorResponse(authResult)) return authResult
-  const body = await request.json() as { editorProjectId?: string }
-  const editor = await findEditor(projectId)
+  const body = await request.json() as { editorProjectId?: string; episodeId?: string }
+  if (!body.episodeId) throw new ApiError('INVALID_PARAMS')
+  const editor = await findEditor(projectId, body.episodeId)
   if (!editor) throw new ApiError('NOT_FOUND')
 
   const project = JSON.parse(editor.projectData) as VideoEditorProject
@@ -51,7 +55,9 @@ export const POST = apiHandler(async (
 
     for (const [index, clip] of project.timeline.entries()) {
       const panel = panelById.get(clip.metadata.panelId)
-      const storageKey = await resolveStorageKeyFromMediaValue(panel?.lipSyncVideoUrl || panel?.videoUrl)
+      const storageKey = await resolveStorageKeyFromMediaValue(
+        clip.src || panel?.lipSyncVideoUrl || panel?.videoUrl,
+      )
       if (!storageKey) throw new Error(`镜头 ${index + 1} 缺少视频文件`)
       const clipPath = path.join(workDir, `${String(index + 1).padStart(3, '0')}.mp4`)
       await writeFile(clipPath, await getObjectBuffer(storageKey))
@@ -63,7 +69,10 @@ export const POST = apiHandler(async (
     await writeFile(concatPath, concatLines.join('\n'), 'utf8')
     await execFileAsync('ffmpeg', [
       '-y', '-f', 'concat', '-safe', '0', '-i', concatPath,
-      '-c', 'copy', '-movflags', '+faststart', outputPath,
+      '-fflags', '+genpts',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',
+      '-c:a', 'aac', '-b:a', '192k',
+      '-movflags', '+faststart', outputPath,
     ], { maxBuffer: 10 * 1024 * 1024 })
 
     const outputKey = generateUniqueKey(`editor-${editor.episodeId}`, 'mp4')
@@ -83,13 +92,13 @@ export const POST = apiHandler(async (
 })
 
 export const GET = apiHandler(async (
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ projectId: string }> },
 ) => {
   const { projectId } = await params
   const authResult = await requireProjectAuthLight(projectId)
   if (isErrorResponse(authResult)) return authResult
-  const editor = await findEditor(projectId)
+  const editor = await findEditor(projectId, request.nextUrl.searchParams.get('episodeId'))
   if (!editor) throw new ApiError('NOT_FOUND')
   return NextResponse.json({
     status: editor.renderStatus || 'pending',

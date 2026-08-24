@@ -30,6 +30,18 @@ interface StoredModel {
   provider?: string
 }
 
+const COMFYUI_VIDEO_CAPABILITIES: ModelCapabilities = {
+  video: {
+    durationOptions: [3, 5, 6, 10],
+    fieldI18n: {
+      duration: {
+        labelKey: 'capability.duration',
+        unitKey: 'unit.second',
+      },
+    },
+  },
+}
+
 interface StoredProvider {
   id?: string
   name?: string
@@ -224,6 +236,15 @@ export const GET = apiHandler(async () => {
       const capabilities = findBuiltinCapabilities(modelType, provider, modelId)
       if (capabilities) {
         option.capabilities = capabilities
+      } else if (
+        modelType === 'video'
+        && provider.split(':', 1)[0]?.toLowerCase() === 'comfyui'
+        && modelId.startsWith('workflow:')
+      ) {
+        // ComfyUI workflows are user-discovered rather than builtin catalog models.
+        // The local video adapter supports a duration input, so expose a trusted,
+        // system-defined capability for both existing and newly added workflows.
+        option.capabilities = COMFYUI_VIDEO_CAPABILITIES
       }
 
       if (modelType === 'video') {

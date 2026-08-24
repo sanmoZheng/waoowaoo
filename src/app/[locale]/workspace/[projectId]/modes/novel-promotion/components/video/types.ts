@@ -80,6 +80,7 @@ export interface Clip {
 
 export interface VideoPanel {
   panelId?: string  // 任务目标ID
+  clipId?: string | null
   storyboardId: string
   panelIndex: number
   textPanel?: TextPanel

@@ -120,24 +120,26 @@ export function useEditorActions({ projectId, episodeId }: UseEditorActionsProps
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 editorProjectId,
+                episodeId,
                 format: 'mp4',
                 quality: 'high'
             })
         })
 
         if (!response.ok) {
-            throw new Error('Failed to start render')
+            const data = await response.json().catch(() => null) as { message?: string; error?: string } | null
+            throw new Error(data?.message || data?.error || `导出失败（HTTP ${response.status}）`)
         }
 
         return response.json()
-    }, [projectId])
+    }, [episodeId, projectId])
 
     /**
      * 获取渲染状态
      */
     const getRenderStatus = useCallback(async (editorProjectId: string) => {
         const response = await apiFetch(
-            `/api/novel-promotion/${projectId}/editor/render?id=${editorProjectId}`
+            `/api/novel-promotion/${projectId}/editor/render?${new URLSearchParams({ id: editorProjectId, episodeId })}`
         )
 
         if (!response.ok) {
@@ -145,7 +147,7 @@ export function useEditorActions({ projectId, episodeId }: UseEditorActionsProps
         }
 
         return response.json()
-    }, [projectId])
+    }, [episodeId, projectId])
 
     return {
         saveProject,

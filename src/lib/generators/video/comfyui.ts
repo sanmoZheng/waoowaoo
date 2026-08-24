@@ -190,7 +190,7 @@ function injectWorkflow(workflow: ApiWorkflow, imageName: string, prompt: string
   if (!imageInjected) throw new Error('COMFYUI_WORKFLOW_IMAGE_NODE_NOT_FOUND')
   if (!promptInjected) throw new Error('COMFYUI_WORKFLOW_PROMPT_NODE_NOT_FOUND')
 
-  const duration = typeof options.duration === 'number' ? options.duration : 3
+  const duration = typeof options.duration === 'number' ? options.duration : 5
   const rawAspectRatio = typeof options.aspectRatio === 'string' ? options.aspectRatio : undefined
   const aspectRatioLabels: Record<string, string> = {
     '1:1': '1:1 (Square)',

@@ -72,7 +72,7 @@ export async function optimizeMiniMaxH3Prompt(input: {
   const model = input.analysisModel?.trim()
   if (!original || !model) return original
 
-  const duration = input.duration && input.duration > 0 ? input.duration : 3
+  const duration = input.duration && input.duration > 0 ? input.duration : 5
   const dialogue = extractDialogue(input.dialogueContext)
   const speaker = input.dialogueSpeaker?.trim()
   const key = cacheKey(model, original, duration, dialogue, speaker)

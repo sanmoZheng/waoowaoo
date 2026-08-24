@@ -62,5 +62,12 @@ describe('model-capabilities/video-effective', () => {
     expect(durationField?.options).toEqual([8])
     expect(durationField?.value).toBe(8)
   })
-})
 
+  it('defaults video duration to 5 seconds when the model supports it', () => {
+    const normalized = normalizeVideoGenerationSelections({
+      definitions: [{ field: 'duration', options: [3, 5, 6, 10], fieldI18n: null }],
+    })
+
+    expect(normalized.duration).toBe(5)
+  })
+})

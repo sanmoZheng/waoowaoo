@@ -160,6 +160,12 @@ function filterSelectionByDefinitions(
   return next
 }
 
+function defaultCapabilityValue(field: string, options: CapabilityValue[]): CapabilityValue {
+  // 视频生成统一优先使用 5 秒；模型不支持 5 秒时仍采用其首个合法选项。
+  if (field === 'duration' && options.includes(5)) return 5
+  return options[0]
+}
+
 export function resolveEffectiveVideoCapabilityDefinitions(input: {
   videoCapabilities?: VideoCapabilities
   pricingTiers?: VideoPricingTier[]
@@ -223,7 +229,7 @@ export function normalizeVideoGenerationSelections(input: {
       }
 
       if (current === undefined || !compatibleOptions.includes(current)) {
-        normalized[definition.field] = compatibleOptions[0]
+        normalized[definition.field] = defaultCapabilityValue(definition.field, compatibleOptions)
         changed = true
       }
     }

@@ -93,6 +93,21 @@
     "enterEdit": "进入剪辑",
     "back": "返回"
   },
+  "clipGroup": {
+    "title": "片段 {index}",
+    "shotCount": "{count} 个镜头",
+    "generatedCount": "已生成 {generated}/{total}",
+    "preview": "片段预览"
+  },
+  "clipPreview": {
+    "title": "片段 {index} 连续预览",
+    "progress": "正在播放 {current}/{total}",
+    "shot": "镜头 {number}",
+    "previous": "上一镜",
+    "next": "下一镜",
+    "jumpToShot": "跳转到镜头 {number}",
+    "close": "关闭预览"
+  },
   "stage": {
     "title": "视频生成",
     "generateAll": "批量生成全部",

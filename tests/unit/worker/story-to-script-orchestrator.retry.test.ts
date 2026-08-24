@@ -239,6 +239,75 @@ describe('story-to-script orchestrator retry', () => {
     })
   })
 
+  it('recovers ordered clip boundaries when the model paraphrases an end marker', async () => {
+    const splitCalls: string[] = []
+    const runStep = vi.fn(async (_meta, _prompt, action: string) => {
+      if (action === 'analyze_characters') {
+        return { text: JSON.stringify({ characters: [{ name: '克莱尔' }] }), reasoning: '' }
+      }
+      if (action === 'analyze_locations') {
+        return { text: JSON.stringify({ locations: [{ name: '站台' }] }), reasoning: '' }
+      }
+      if (action === 'analyze_props') {
+        return { text: JSON.stringify({ props: [] }), reasoning: '' }
+      }
+      if (action === 'split_clips') {
+        splitCalls.push(action)
+        return {
+          text: JSON.stringify([
+            {
+              start: '雨点敲打着窗户。',
+              end: '克莱尔走进了雨中。',
+              summary: '医院',
+              location: '医院',
+              characters: ['克莱尔'],
+            },
+            {
+              start: '站台上挤满了人。',
+              // The source says “日期仍然没有改变”; this paraphrase used to abort the workflow.
+              end: '克莱尔脸色苍白。日期没有改变。',
+              summary: '站台',
+              location: '站台',
+              characters: ['克莱尔'],
+            },
+          ]),
+          reasoning: '',
+        }
+      }
+      if (action === 'screenplay_conversion') {
+        return { text: JSON.stringify({ scenes: [{ scene_number: 1 }] }), reasoning: '' }
+      }
+      throw new Error(`unexpected action: ${action}`)
+    })
+
+    const content = [
+      '雨点敲打着窗户。通话结束了。克莱尔走进了雨中。',
+      '站台上挤满了人。一个流浪汉抓住了克莱尔的手腕。',
+      '克莱尔脸色苍白。日期仍然没有改变。',
+    ].join('\n')
+    const result = await runStoryToScriptOrchestrator({
+      content,
+      baseCharacters: [],
+      baseLocations: [],
+      baseCharacterIntroductions: [],
+      promptTemplates: {
+        characterPromptTemplate: '{input}',
+        locationPromptTemplate: '{input}',
+        propPromptTemplate: '{input}',
+        clipPromptTemplate: '{input}',
+        screenplayPromptTemplate: '{clip_content}',
+      },
+      runStep,
+    })
+
+    expect(splitCalls).toHaveLength(1)
+    expect(result.clipList).toHaveLength(2)
+    expect(result.clipList[0]?.content).toContain('克莱尔走进了雨中')
+    expect(result.clipList[0]?.content).not.toContain('站台上挤满了人')
+    expect(result.clipList[1]?.content).toContain('日期仍然没有改变')
+    expect(result.clipList.every((clip) => clip.matchLevel === 'L3')).toBe(true)
+  })
+
   it('enforces topology: split waits for analyses, screenplay waits for split', async () => {
     const actionOrder: string[] = []
     const runStep = vi.fn(async (_meta, _prompt, action: string) => {

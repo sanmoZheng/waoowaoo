@@ -44,4 +44,37 @@ describe('ComfyUI provider contract', () => {
     })
     expect(workflow['3'].inputs.video).toEqual(['2', 0])
   })
+
+  it('retains dynamic MiniMax H3 reference slots when converting a workflow', () => {
+    const workflow = convertComfyWorkflowToApi({
+      nodes: [
+        {
+          id: 10,
+          type: 'LoadImage',
+          inputs: [{ name: 'image', type: 'COMBO', link: null }],
+          widgets_values: ['character.png'],
+        },
+        {
+          id: 11,
+          type: 'MiniMaxH3ReferenceToVideo',
+          inputs: [
+            { name: 'ref_images.ref_image_0', type: 'IMAGE', link: 20 },
+            { name: 'prompt', type: 'STRING', link: null },
+            { name: 'length', type: 'INT', link: null },
+          ],
+          widgets_values: ['保持人物和场景一致', 124],
+        },
+      ],
+      links: [[20, 10, 0, 11, 0, 'IMAGE']],
+    })
+
+    expect(workflow['11']).toEqual({
+      class_type: 'MiniMaxH3ReferenceToVideo',
+      inputs: {
+        'ref_images.ref_image_0': ['10', 0],
+        prompt: '保持人物和场景一致',
+        length: 124,
+      },
+    })
+  })
 })

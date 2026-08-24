@@ -59,6 +59,7 @@ export function useVideoPanelsProjection({
 
         panels.push({
           panelId,
+          clipId: storyboard.clipId,
           storyboardId: storyboard.id,
           panelIndex: actualPanelIndex,
           textPanel: {

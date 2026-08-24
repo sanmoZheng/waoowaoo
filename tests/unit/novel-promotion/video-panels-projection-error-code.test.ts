@@ -38,6 +38,7 @@ describe('video panels projection error code', () => {
     })
 
     expect(result.allPanels).toHaveLength(1)
+    expect(result.allPanels[0]?.clipId).toBe('clip-1')
     expect(result.allPanels[0]?.videoErrorCode).toBe('EXTERNAL_ERROR')
     expect(result.allPanels[0]?.videoErrorMessage).toBe('upstream failed')
   })
