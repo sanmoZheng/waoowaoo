@@ -6,6 +6,16 @@ import { AppIcon } from '@/components/ui/icons'
 type Asset = { id: string; file: File; preview?: string }
 type Stage = 'idle' | 'uploading' | 'submitted' | 'running' | 'completed' | 'failed'
 
+function createAssetId(): string {
+  const webCrypto = globalThis.crypto
+  if (typeof webCrypto?.randomUUID === 'function') return webCrypto.randomUUID()
+  if (typeof webCrypto?.getRandomValues === 'function') {
+    const values = webCrypto.getRandomValues(new Uint32Array(4))
+    return Array.from(values, (value) => value.toString(16).padStart(8, '0')).join('-')
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
 export default function MiniMaxH3TestPage() {
   const [baseUrl, setBaseUrl] = useState('http://192.168.0.89:8188')
   const [workflowPath, setWorkflowPath] = useState('video_minimax_h3_r2v_参考图生图 (Copy).json')
@@ -45,7 +55,7 @@ export default function MiniMaxH3TestPage() {
     if (!files) return
     const setter = kind === 'images' ? setImages : kind === 'videos' ? setVideos : setAudios
     const max = kind === 'images' ? 9 : 3
-    const next = Array.from(files).map(file => ({ id: crypto.randomUUID(), file, preview: kind === 'images' ? URL.createObjectURL(file) : undefined }))
+    const next = Array.from(files).map(file => ({ id: createAssetId(), file, preview: kind === 'images' ? URL.createObjectURL(file) : undefined }))
     setter(current => [...current, ...next].slice(0, max))
   }
   function move(setter: Dispatch<SetStateAction<Asset[]>>, index: number, delta: number) {
