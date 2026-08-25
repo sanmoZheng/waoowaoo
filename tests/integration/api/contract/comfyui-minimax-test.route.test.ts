@@ -41,4 +41,20 @@ describe('POST/GET /api/user/comfyui-minimax-test', () => {
 
     expect(response.status).toBe(401)
   })
+
+  it('maps every supported clarity option to the workflow megapixel value', async () => {
+    const { resolveMinimaxMegapixels } = await import('@/app/api/user/comfyui-minimax-test/route')
+
+    expect([
+      '480P',
+      '540P',
+      '576P',
+      '600P',
+      '720P',
+      '768P',
+      '900P',
+      '1080P',
+    ].map(resolveMinimaxMegapixels)).toEqual([0.4, 0.5, 0.6, 0.65, 0.9, 1.0, 1.4, 2.0])
+    expect(() => resolveMinimaxMegapixels('4K')).toThrow('COMFYUI_RESOLUTION_INVALID')
+  })
 })

@@ -136,7 +136,7 @@ describe('createWorkerLLMStreamCallbacks', () => {
   it('uses injected active controller for run-owned workflows', async () => {
     const job = buildJob()
     const context = createWorkerLLMStreamContext(job, 'story_to_script')
-    const assertActive = vi.fn(async (_stage: string) => undefined)
+    const assertActive = vi.fn(async () => undefined)
     const isActive = vi.fn(async () => true)
     const callbacks = createWorkerLLMStreamCallbacks(job, context, {
       assertActive,
@@ -161,6 +161,41 @@ describe('createWorkerLLMStreamCallbacks', () => {
       }),
       expect.objectContaining({
         stepId: 'split_clips',
+      }),
+    )
+  })
+
+  it('can suppress intermediate chunks while preserving the final output', async () => {
+    const job = buildJob()
+    const context = createWorkerLLMStreamContext(job, 'story_to_script')
+    const callbacks = createWorkerLLMStreamCallbacks(job, context, {
+      publishStreamChunks: false,
+    })
+
+    callbacks.onChunk?.({
+      kind: 'reasoning',
+      delta: 'verbose reasoning',
+      seq: 1,
+      lane: 'reasoning',
+      step: { id: 'analyze_locations', attempt: 1, title: 'locations', index: 1, total: 1 },
+    })
+    callbacks.onComplete?.('final structured result', {
+      id: 'analyze_locations',
+      attempt: 1,
+      title: 'locations',
+      index: 1,
+      total: 1,
+    })
+    await callbacks.flush()
+
+    expect(reportTaskStreamChunkMock).not.toHaveBeenCalled()
+    expect(reportTaskProgressMock).toHaveBeenCalledWith(
+      expect.anything(),
+      90,
+      expect.objectContaining({
+        stage: 'worker_llm_complete',
+        output: 'final structured result',
+        stepId: 'analyze_locations',
       }),
     )
   })

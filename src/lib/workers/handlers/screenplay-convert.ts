@@ -86,7 +86,10 @@ export async function handleScreenplayConvertTask(job: Job<TaskJobData>) {
   await assertTaskActive(job, 'screenplay_convert_prepare')
 
   const streamContext = createWorkerLLMStreamContext(job, 'screenplay_convert')
-  const streamCallbacks = createWorkerLLMStreamCallbacks(job, streamContext)
+  // 独立剧本转换任务不展示逐字 AI 输出，仅保留阶段进度与最终结果。
+  const streamCallbacks = createWorkerLLMStreamCallbacks(job, streamContext, {
+    publishStreamChunks: false,
+  })
   const total = episode.clips.length
   const results: Array<{
     clipId: string

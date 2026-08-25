@@ -34,6 +34,7 @@ import { resolveAnalysisModel } from './resolve-analysis-model'
 import { createArtifact, listArtifacts } from '@/lib/run-runtime/service'
 import { assertWorkflowRunActive, withWorkflowRunLease } from '@/lib/run-runtime/workflow-lease'
 import { parseScreenplayPayload } from './screenplay-convert-helpers'
+import { resolveStoryToScriptStepAiOptions } from './story-to-script-step-options'
 
 function readAssetKind(value: Record<string, unknown>): string {
   return typeof value.assetKind === 'string' ? value.assetKind : 'location'
@@ -161,7 +162,7 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
     })
   }
   const streamContext = createWorkerLLMStreamContext(job, 'story_to_script')
-  const createStepCallbacks = () => createWorkerLLMStreamCallbacks(job, streamContext, {
+  const createStepCallbacks = (publishStreamChunks: boolean) => createWorkerLLMStreamCallbacks(job, streamContext, {
     assertActive: async (stage) => {
       await assertRunActive(stage)
     },
@@ -176,6 +177,7 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
         throw error
       }
     },
+    publishStreamChunks,
   })
 
   const runStep = async (
@@ -212,7 +214,11 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
       model,
     })
 
-    const stepCallbacks = createStepCallbacks()
+    const stepAiOptions = resolveStoryToScriptStepAiOptions(meta.stepId, {
+      reasoning,
+      reasoningEffort,
+    })
+    const stepCallbacks = createStepCallbacks(stepAiOptions.publishStreamChunks)
     const output = await withInternalLLMStreamCallbacks(
       stepCallbacks,
       async () => await executeAiTextStep({
@@ -226,8 +232,8 @@ export async function handleStoryToScriptTask(job: Job<TaskJobData>) {
           stepAttempt,
         },
         temperature,
-        reasoning,
-        reasoningEffort,
+        reasoning: stepAiOptions.reasoning,
+        reasoningEffort: stepAiOptions.reasoningEffort,
       }),
     )
     await assertRunActive(`story_to_script_step_result:${meta.stepId}`)

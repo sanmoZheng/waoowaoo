@@ -7,12 +7,10 @@ import { prisma } from '@/lib/prisma'
 import { submitTask } from '@/lib/task/submitter'
 import { resolveRequiredTaskLocale } from '@/lib/task/resolve-locale'
 import { TASK_TYPE } from '@/lib/task/types'
+import { createRuntimeId } from '@/lib/runtime-id'
 
 function createPanelVariantId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return `panel-variant-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  return createRuntimeId('panel-variant-')
 }
 
 async function rollbackCreatedVariantPanel(params: {

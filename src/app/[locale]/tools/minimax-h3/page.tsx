@@ -2,19 +2,12 @@
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { AppIcon } from '@/components/ui/icons'
+import { createRuntimeId } from '@/lib/runtime-id'
 
 type Asset = { id: string; file: File; preview?: string }
 type Stage = 'idle' | 'uploading' | 'submitted' | 'running' | 'completed' | 'failed'
 
-function createAssetId(): string {
-  const webCrypto = globalThis.crypto
-  if (typeof webCrypto?.randomUUID === 'function') return webCrypto.randomUUID()
-  if (typeof webCrypto?.getRandomValues === 'function') {
-    const values = webCrypto.getRandomValues(new Uint32Array(4))
-    return Array.from(values, (value) => value.toString(16).padStart(8, '0')).join('-')
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
-}
+const RESOLUTION_OPTIONS = ['480P', '540P', '576P', '600P', '720P', '768P', '900P', '1080P']
 
 export default function MiniMaxH3TestPage() {
   const [baseUrl, setBaseUrl] = useState('http://192.168.0.89:8188')
@@ -22,6 +15,7 @@ export default function MiniMaxH3TestPage() {
   const [prompt, setPrompt] = useState('使用 <Picture 1> 作为人物和首帧参考。保持人物身份、服装与场景一致，动作自然克制，镜头缓慢推进。')
   const [duration, setDuration] = useState(5)
   const [aspectRatio, setAspectRatio] = useState('16:9')
+  const [resolution, setResolution] = useState('720P')
   const [refImageSize, setRefImageSize] = useState('match')
   const [useVideoAudio, setUseVideoAudio] = useState(false)
   const [images, setImages] = useState<Asset[]>([])
@@ -55,7 +49,7 @@ export default function MiniMaxH3TestPage() {
     if (!files) return
     const setter = kind === 'images' ? setImages : kind === 'videos' ? setVideos : setAudios
     const max = kind === 'images' ? 9 : 3
-    const next = Array.from(files).map(file => ({ id: createAssetId(), file, preview: kind === 'images' ? URL.createObjectURL(file) : undefined }))
+    const next = Array.from(files).map(file => ({ id: createRuntimeId('asset-'), file, preview: kind === 'images' ? URL.createObjectURL(file) : undefined }))
     setter(current => [...current, ...next].slice(0, max))
   }
   function move(setter: Dispatch<SetStateAction<Asset[]>>, index: number, delta: number) {
@@ -64,7 +58,7 @@ export default function MiniMaxH3TestPage() {
   async function submit() {
     setStage('uploading'); setMessage('校验标签并上传素材…'); setResultUrl(''); setPromptId('')
     try {
-      const form = new FormData(); form.set('baseUrl', baseUrl); form.set('workflowPath', workflowPath); form.set('prompt', prompt); form.set('duration', String(duration)); form.set('aspectRatio', aspectRatio); form.set('refImageSize', refImageSize); form.set('useVideoAudio', String(useVideoAudio))
+      const form = new FormData(); form.set('baseUrl', baseUrl); form.set('workflowPath', workflowPath); form.set('prompt', prompt); form.set('duration', String(duration)); form.set('aspectRatio', aspectRatio); form.set('resolution', resolution); form.set('refImageSize', refImageSize); form.set('useVideoAudio', String(useVideoAudio))
       images.forEach(x => form.append('images', x.file)); videos.forEach(x => form.append('videos', x.file)); audios.forEach(x => form.append('audios', x.file))
       const response = await fetch('/api/user/comfyui-minimax-test', { method: 'POST', body: form }); const data = await response.json()
       if (!response.ok || !data.success) throw new Error(data.message || data.error || '提交失败')
@@ -89,10 +83,10 @@ export default function MiniMaxH3TestPage() {
   return <main className="min-h-screen bg-[#f4f6fa] px-6 py-8 text-slate-900"><div className="mx-auto max-w-7xl">
     <header className="mb-7 flex items-start justify-between gap-6"><div><div className="mb-2 flex items-center gap-2 text-sm font-medium text-violet-600"><AppIcon name="sparkles" className="h-[17px] w-[17px]"/>实验工具</div><h1 className="text-3xl font-bold">MiniMax H3 参考生成测试台</h1><p className="mt-2 text-sm text-slate-500">运行时动态组装参考素材节点，不再依赖工作流中的示例文件。</p></div><div className={`max-w-md rounded-full px-4 py-2 text-sm ${stage === 'failed' ? 'bg-red-100 text-red-600' : stage === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{message}</div></header>
     <div className="grid gap-6 lg:grid-cols-[1fr_350px]"><div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="mb-5 text-lg font-semibold">1. 工作流参数</h2><div className="grid gap-4 md:grid-cols-2"><Field label="ComfyUI 地址" value={baseUrl} onChange={setBaseUrl}/><Field label="工作流路径" value={workflowPath} onChange={setWorkflowPath}/></div><div className="mt-4 grid grid-cols-3 gap-4"><Select label="时长" value={String(duration)} values={['3','5','6','10','15']} onChange={v=>setDuration(Number(v))}/><Select label="画面比例" value={aspectRatio} values={['16:9','9:16','1:1']} onChange={setAspectRatio}/><Select label="参考精度" value={refImageSize} values={['match','max']} onChange={setRefImageSize}/></div></section>
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="mb-5 text-lg font-semibold">1. 工作流参数</h2><div className="grid gap-4 md:grid-cols-2"><Field label="ComfyUI 地址" value={baseUrl} onChange={setBaseUrl}/><Field label="工作流路径" value={workflowPath} onChange={setWorkflowPath}/></div><div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Select label="时长" value={String(duration)} values={['3','5','6','10','15']} onChange={v=>setDuration(Number(v))}/><Select label="画面比例" value={aspectRatio} values={['16:9','9:16','1:1']} onChange={setAspectRatio}/><Select label="输出清晰度" value={resolution} values={RESOLUTION_OPTIONS} onChange={setResolution}/><Select label="参考精度" value={refImageSize} values={['match','max']} onChange={setRefImageSize}/></div><p className="mt-3 text-xs text-slate-500">输出清晰度会设置工作流 User inputs 中的百万像素；LoRA、采样步数和采样器保持工作流文件中的原始配置。</p></section>
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-3 flex justify-between"><h2 className="text-lg font-semibold">2. MiniMax 提示词</h2><span className="text-xs text-slate-400">{prompt.length}/4000</span></div><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} rows={8} className="w-full rounded-xl border border-slate-200 p-4 text-sm leading-6 outline-none focus:border-violet-400"/><div className="mt-3 flex flex-wrap gap-2">{tags.map(tag=><button key={tag} onClick={()=>setPrompt(p=>`${p} ${tag}`)} className="rounded-full bg-violet-50 px-3 py-1.5 text-xs text-violet-700">{tag}</button>)}</div></section>
       <div className="grid gap-5 xl:grid-cols-3">{assets('参考图片','images',images,setImages,9,'image/*')}{assets('参考视频','videos',videos,setVideos,3,'video/*')}{assets('参考音频','audios',audios,setAudios,3,'audio/*')}</div>
-    </div><aside><section className="sticky top-6 rounded-2xl bg-slate-950 p-6 text-white shadow-xl"><h2 className="text-lg font-semibold">提交预览</h2><div className="mt-5 space-y-3 text-sm text-slate-300"><Row name="参考图片" value={images.length}/><Row name="参考视频" value={videos.length}/><Row name="视频原声" value={useVideoAudio ? '保留' : '去除'}/><Row name="参考音频" value={audios.length}/><Row name="生成时长" value={`${duration} 秒`}/></div><button disabled={['uploading','submitted','running'].includes(stage)} onClick={submit} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 py-3.5 font-semibold disabled:opacity-50"><AppIcon name="play" className="h-[18px] w-[18px]"/>{stage === 'uploading' ? '上传中…' : ['submitted','running'].includes(stage) ? '生成中…' : '提交测试'}</button>{promptId && <div className="mt-4 break-all rounded-xl bg-slate-900 p-3 text-xs text-slate-400">任务 ID：{promptId}</div>}{resultUrl && <video src={resultUrl} controls className="mt-4 w-full rounded-xl"/>}</section></aside></div>
+    </div><aside><section className="sticky top-6 rounded-2xl bg-slate-950 p-6 text-white shadow-xl"><h2 className="text-lg font-semibold">提交预览</h2><div className="mt-5 space-y-3 text-sm text-slate-300"><Row name="参考图片" value={images.length}/><Row name="参考视频" value={videos.length}/><Row name="视频原声" value={useVideoAudio ? '保留' : '去除'}/><Row name="参考音频" value={audios.length}/><Row name="生成时长" value={`${duration} 秒`}/><Row name="输出清晰度" value={resolution}/><Row name="生成参数" value="使用工作流原始配置"/></div><button disabled={['uploading','submitted','running'].includes(stage)} onClick={submit} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 py-3.5 font-semibold disabled:opacity-50"><AppIcon name="play" className="h-[18px] w-[18px]"/>{stage === 'uploading' ? '上传中…' : ['submitted','running'].includes(stage) ? '生成中…' : '提交测试'}</button>{promptId && <div className="mt-4 break-all rounded-xl bg-slate-900 p-3 text-xs text-slate-400">任务 ID：{promptId}</div>}{resultUrl && <video src={resultUrl} controls className="mt-4 w-full rounded-xl"/>}</section></aside></div>
   </div></main>
 }
 

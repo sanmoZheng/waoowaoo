@@ -11,6 +11,7 @@ import {
   type InternalLLMStreamStepMeta,
 } from '@/lib/llm-observe/internal-stream-context'
 import { getTaskFlowMeta } from '@/lib/llm-observe/stage-pipeline'
+import { createRuntimeId } from '@/lib/runtime-id'
 
 type RouteParamValue = string | string[] | undefined
 type RouteParams = Record<string, RouteParamValue>
@@ -51,10 +52,7 @@ function shouldAuditUserOperation(method: string, status: number, pathname: stri
 }
 
 function createRequestId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+  return createRuntimeId('req_')
 }
 
 function parseTrueFlag(value: string | null): boolean {

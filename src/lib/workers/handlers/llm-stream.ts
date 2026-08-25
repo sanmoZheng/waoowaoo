@@ -20,6 +20,7 @@ export type WorkerInternalLLMStreamCallbacks = InternalLLMStreamCallbacks & {
 export type WorkerLLMActiveController = {
   assertActive?: (stage: string) => Promise<void>
   isActive?: () => Promise<boolean>
+  publishStreamChunks?: boolean
 }
 
 export function createWorkerLLMStreamContext(job: Job<TaskJobData>, label = 'worker'): WorkerLLMStreamContext {
@@ -214,6 +215,7 @@ export function createWorkerLLMStreamCallbacks(
     onChunk: ({ kind, delta, lane, step }) => {
       ensureActiveOrThrow('worker_llm_stream')
       scheduleActiveProbe()
+      if (activeController?.publishStreamChunks === false) return
       if (!delta) return
       const stepId = typeof step?.id === 'string' && step.id.trim() ? step.id.trim() : null
       const stepAttempt =

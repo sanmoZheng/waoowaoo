@@ -7,6 +7,22 @@ import { convertComfyWorkflowToApi } from '@/lib/generators/video/comfyui'
 type ApiNode = { class_type: string; inputs: Record<string, unknown> }
 type ApiWorkflow = Record<string, ApiNode>
 const LIMITS = { images: 9, videos: 3, audios: 3 }
+const RESOLUTION_MEGAPIXELS: Record<string, number> = {
+  '480P': 0.4,
+  '540P': 0.5,
+  '576P': 0.6,
+  '600P': 0.65,
+  '720P': 0.9,
+  '768P': 1.0,
+  '900P': 1.4,
+  '1080P': 2.0,
+}
+
+export function resolveMinimaxMegapixels(resolution: string): number {
+  const megapixels = RESOLUTION_MEGAPIXELS[resolution.toUpperCase()]
+  if (megapixels === undefined) throw new Error(`COMFYUI_RESOLUTION_INVALID: ${resolution}`)
+  return megapixels
+}
 
 function baseUrl(value: FormDataEntryValue | null) {
   if (typeof value !== 'string') throw new Error('COMFYUI_BASE_URL_REQUIRED')
@@ -52,7 +68,7 @@ function validateTags(prompt: string, counts: { images: number; videos: number; 
   }
 }
 
-function buildWorkflow(raw: Record<string, unknown>, input: { prompt: string; duration: number; aspect: string; quality: string; useVideoAudio: boolean; images: string[]; videos: string[]; audios: string[] }) {
+function buildWorkflow(raw: Record<string, unknown>, input: { prompt: string; duration: number; aspect: string; resolution: string; quality: string; useVideoAudio: boolean; images: string[]; videos: string[]; audios: string[] }) {
   const workflow = convertComfyWorkflowToApi(raw) as ApiWorkflow
   const removable = new Set(Object.entries(workflow).filter(([, node]) => ['LoadImage', 'LoadVideo', 'LoadAudio', 'GetVideoComponents', 'MarkdownNote'].includes(node.class_type)).map(([id]) => id))
   removable.forEach(id => delete workflow[id])
@@ -68,11 +84,18 @@ function buildWorkflow(raw: Record<string, unknown>, input: { prompt: string; du
   input.videos.forEach((name, i) => { const load = `waoo_video_${i}`; const parts = `waoo_video_parts_${i}`; workflow[load] = { class_type: 'LoadVideo', inputs: { file: name } }; workflow[parts] = { class_type: 'GetVideoComponents', inputs: { video: [load, 0] } }; core.inputs[`ref_videos.ref_video_${i}`] = [parts, 0]; if (input.useVideoAudio) core.inputs[`ref_video_audios.ref_video_audio_${i}`] = [parts, 1] })
   input.audios.forEach((name, i) => { const id = `waoo_audio_${i}`; workflow[id] = { class_type: 'LoadAudio', inputs: { audio: name } }; core.inputs[`ref_audios.ref_audio_${i}`] = [id, 0] })
   const aspects: Record<string, string> = { '16:9': '16:9 (Widescreen)', '9:16': '9:16 (Portrait Widescreen)', '1:1': '1:1 (Square)' }
+  const megapixels = resolveMinimaxMegapixels(input.resolution)
+  let resolutionNodeFound = false
   Object.values(workflow).forEach(node => {
     if (node.class_type === 'PrimitiveFloat' && 'value' in node.inputs) node.inputs.value = input.duration
     if ('aspect_ratio' in node.inputs) node.inputs.aspect_ratio = aspects[input.aspect] || input.aspect
+    if (node.class_type === 'ResolutionSelector' && 'megapixels' in node.inputs) {
+      node.inputs.megapixels = megapixels
+      resolutionNodeFound = true
+    }
     if ('noise_seed' in node.inputs) node.inputs.noise_seed = Math.floor(Math.random() * 2_147_483_647)
   })
+  if (!resolutionNodeFound) throw new Error('COMFYUI_RESOLUTION_SELECTOR_NOT_FOUND: 工作流缺少 User inputs/ResolutionSelector 的百万像素参数')
   return workflow
 }
 
@@ -86,7 +109,7 @@ export const POST = apiHandler(async (request: NextRequest) => {
   const workflowResponse = await fetch(`${url}/userdata/${encodeURIComponent(`workflows/${path}`)}`, { signal: AbortSignal.timeout(20_000) })
   if (!workflowResponse.ok) throw new Error(`COMFYUI_WORKFLOW_DOWNLOAD_FAILED: HTTP ${workflowResponse.status}`)
   const [images, videos, audios] = await Promise.all([Promise.all(imageFiles.map(file => upload(url, file))), Promise.all(videoFiles.map(file => upload(url, file))), Promise.all(audioFiles.map(file => upload(url, file)))])
-  const workflow = buildWorkflow(await workflowResponse.json() as Record<string, unknown>, { prompt, duration: Number(form.get('duration') || 5), aspect: String(form.get('aspectRatio') || '16:9'), quality: String(form.get('refImageSize') || 'match'), useVideoAudio, images, videos, audios })
+  const workflow = buildWorkflow(await workflowResponse.json() as Record<string, unknown>, { prompt, duration: Number(form.get('duration') || 5), aspect: String(form.get('aspectRatio') || '16:9'), resolution: String(form.get('resolution') || '720P').toUpperCase(), quality: String(form.get('refImageSize') || 'match'), useVideoAudio, images, videos, audios })
   const submit = await fetch(`${url}/prompt`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: workflow, client_id: `waoowaoo-test-${randomUUID()}` }) })
   const text = await submit.text(); if (!submit.ok) throw new Error(`COMFYUI_SUBMIT_FAILED: HTTP ${submit.status} ${text}`)
   const promptId = (JSON.parse(text) as { prompt_id?: string }).prompt_id; if (!promptId) throw new Error('COMFYUI_PROMPT_ID_MISSING')
